@@ -3,34 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>籃球戰術平台 Pro - 滿版劇本版</title>
+    <title>籃球戰術平台 Pro - 穩定修復滿版劇本版</title>
     <style>
-        body { margin: 0; padding: 0; background-color: #1a202c; font-family: 'Microsoft JhengHei', sans-serif; color: white; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        /* 基礎佈局：強制滿版，無滾動條 */
+        body { 
+            margin: 0; 
+            padding: 0; 
+            background-color: #1a202c; 
+            font-family: 'Microsoft JhengHei', sans-serif; 
+            color: white; 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh; 
+            box-sizing: border-box;
+            overflow: hidden; 
+        }
 
-        /* 側邊抽屜樣式 */
+        /* RWD 直立提醒：平板橫放時自動隱藏提醒 */
+        @media (orientation: portrait) {
+            body::before { 
+                content: "🔄 請旋轉螢幕至橫向\n以獲得最佳戰術體驗"; 
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                background: #1a202c; display: flex; justify-content: center; 
+                align-items: center; z-index: 9999; font-size: 1.8rem; 
+                color: #f39c12; text-align: center; white-space: pre-wrap; padding: 20px; 
+            }
+            .main-content, .voice-row { display: none !important; }
+        }
+
+        /* 修改重點：側邊選單隱藏抽屜 */
         .sidebar { 
             position: fixed; 
-            left: -200px; /* 平時隱藏 */
+            left: -220px; /* 隱藏於左側 */
             top: 0; 
             width: 200px; 
             height: 100%; 
             background: #2d3748; 
-            z-index: 100; 
-            transition: 0.3s; 
+            padding: 15px; 
+            border-radius: 0 8px 8px 0;
+            border-right: 1px solid #4a5568; 
             display: flex; 
             flex-direction: column; 
-            padding: 15px; 
-            box-shadow: 2px 0 10px rgba(0,0,0,0.5); 
+            z-index: 1000;
+            transition: 0.3s ease-out; /* 滑動動畫 */
+            box-shadow: 2px 0 10px rgba(0,0,0,0.5);
         }
-        .sidebar.active { left: 0; } /* 點選後滑出 */
+        .sidebar.active { left: 0; } /* 點選標籤後滑出 */
 
         /* 側邊切換標籤 */
         .sidebar-toggle { 
             position: absolute; 
-            right: -40px; 
-            top: 20px; 
-            width: 40px; 
-            height: 100px; 
+            right: -45px; /* 露出一截標籤 */
+            top: 15px; 
+            width: 45px; 
+            height: 110px; 
             background: #3182ce; 
             color: white; 
             display: flex; 
@@ -39,91 +65,217 @@
             writing-mode: vertical-rl; 
             border-radius: 0 8px 8px 0; 
             cursor: pointer; 
-            font-size: 0.9rem; 
+            font-size: 0.95rem; 
             font-weight: bold;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.3);
         }
 
-        /* 球場顯示區：自動佔滿剩餘寬度 */
-        .board-container { 
+        /* 球場顯示區：自動適應螢幕 */
+        .main-content { 
             flex: 1; 
             display: flex; 
             flex-direction: column; 
             align-items: center; 
             justify-content: center; 
-            padding: 10px;
+            min-height: 0; 
+            padding: 5px; 
         }
+
+        #step-info { color: #f6e05e; font-weight: bold; font-size: 1.1rem; margin-bottom: 3px; }
 
         canvas { 
             background-color: #f39c12; 
-            border: 3px solid #5d3a1a; 
+            border: 4px solid #5d3a1a; 
             border-radius: 5px; 
-            max-height: 80vh; /* 提高畫布高度占比 */
+            max-height: 80vh; /* 畫布最大高度提升至 80% 螢幕高度 */
             max-width: 95%; 
             object-fit: contain; 
             touch-action: none; 
+            z-index: 10;
         }
 
-        .control-row { margin-top: 10px; display: flex; gap: 10px; justify-content: center; }
-        
-        /* 底部語音列：整合在一起 */
+        .control-row { margin-top: 8px; display: flex; gap: 8px; justify-content: center; flex-wrap: nowrap; }
+
+        /* 修正 1：整合語音列與按鈕，文字字體加大 */
         .voice-row { 
             display: flex; 
-            background: #2d3748; 
-            padding: 10px 20px; 
-            gap: 15px; 
             align-items: center; 
+            background: #2d3748; 
+            padding: 8px 15px; 
             border-top: 1px solid #4a5568; 
+            gap: 15px; 
         }
-        #transcript { flex: 1; font-size: 1.5rem; color: #f6e05e; font-weight: bold; }
+        #transcript { 
+            flex: 1; 
+            font-size: 1.5rem; /* 字體加大，清晰可見 */
+            font-weight: bold;
+            color: #f6e05e; 
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+            background: #1a202c; 
+            padding: 5px 15px; 
+            border-radius: 5px; 
+        }
 
-        button { padding: 10px 18px; border-radius: 6px; font-weight: bold; border: none; cursor: pointer; }
+        /* 按鈕樣式 */
+        button { padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; border: none; font-size: 0.9rem; transition: 0.2s; white-space: nowrap; }
+        .btn-full-full { background: #3182ce; color: white; width: 100%; margin-top: auto; } /* 儲存戰術按鈕 */
         .btn-step { background: #d69e2e; color: white; }
-        .btn-full { background: #4a5568; color: white; }
+        .btn-play { background: #38a169; color: white; }
+        .btn-stop { background: #e53e3e; color: white; }
+        .btn-reset { background: #718096; color: white; }
+        .btn-fullscreen { background: #4a5568; color: white; }
+        .btn-mic { background: #3182ce; color: white; }
+        .btn-clear { background: #a0aec0; color: #1a202c; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
     </style>
 </head>
 <body>
 
 <div class="sidebar" id="sidebar">
-    <div class="sidebar-toggle" onclick="toggleSidebar()">📁 我的戰術庫</div>
-    <h3 style="margin:0;">戰術列表</h3>
-    <div id="tactic-list" style="flex:1; overflow-y:auto; margin-top:10px;"></div>
-    <button onclick="saveToCloud()" style="background:#3182ce; color:white;">💾 儲存戰術</button>
+    <div class="sidebar-toggle" onclick="toggleSidebar()">📂 我的戰術庫</div>
+    <h3 style="margin:0; font-size:1.1rem; text-align:center;">劇本列表</h3>
+    <div id="tactic-list" style="flex:1; overflow-y:auto; margin: 10px 0; border: 1px inset #4a5568; background: #1a202c; border-radius: 4px;"></div>
+    <button id="save-btn" class="btn-full-full">💾 儲存戰術到 Google Sheets</button>
 </div>
 
-<div class="board-container">
-    <div id="step-info" style="color:#f6e05e; font-weight:bold; margin-bottom:5px;">已設定：0 / 20</div>
+<div class="main-content">
+    <div id="step-info">已儲存：0/20 格點位</div>
     <canvas id="courtCanvas" width="900" height="600"></canvas>
     <div class="control-row">
-        <button id="next-step-btn" class="btn-step">📌 儲存此格</button>
-        <button onclick="playTactic()" style="background:#38a169; color:white;">▶️ 播放</button>
-        <button onclick="stopAnimation()" style="background:#e53e3e; color:white;">⏹️ 停止</button>
-        <button id="fullscreen-btn" class="btn-full">📺 全螢幕</button>
+        <button id="next-step-btn" class="btn-step">📌 儲存此格 (上限20)</button>
+        <button id="play-btn" class="btn-play">▶️ 播放劇本</button>
+        <button id="stop-btn" class="btn-stop">⏹️ 停止</button>
+        <button id="reset-btn" class="btn-reset">🔄 重置</button>
+        <button id="fullscreen-btn" class="btn-fullscreen">📺 全螢幕</button>
     </div>
 </div>
 
 <div class="voice-row">
     <div id="transcript">等待語音指令...</div>
-    <button style="background:#3182ce; color:white;">🎤 錄音</button>
-    <button style="background:#a0aec0; color:#1a202c;">🗑️ 清除</button>
+    <button id="mic-btn" class="btn-mic">🎤 錄音</button>
+    <button id="clear-btn" class="btn-clear">🗑️ 清除</button>
 </div>
 
 <script>
-    // 側邊欄切換邏輯
+    const canvas = document.getElementById('courtCanvas');
+    const ctx = canvas.getContext('2d');
+    const scale = 30; 
+    const imgNames = ["01.png", "05.png", "06.png", "07.png", "08.png", "09.png", "10.png", "12.png", "13.png", "15.png", "23.png", "89.png"];
+    const imgUrls = imgNames.map(name => `https://raw.githubusercontent.com/goodskyfly-cell/newboard/main/${name}`);
+
+    let items = [], dragTarget = null, images = [], animationFrames = [], isRecording = false, recordTimer;
+    let GAS_URL = "您的GAS網頁應用程式URL"; // 請在此處填入您的GAS網址
+
+    // 側邊選單切換
     function toggleSidebar() {
         document.getElementById('sidebar').classList.toggle('active');
     }
 
-    // 全螢幕切換
+    // 初始化：強化圖片偵測
+    async function init() {
+        const promises = imgUrls.map(url => {
+            return new Promise(res => {
+                const img = new Image();
+                img.crossOrigin = "anonymous"; // 修正跨域圖片問題
+                img.src = url;
+                img.onload = () => res(img);
+                img.onerror = () => res(null);
+            });
+        });
+        images = await Promise.all(promises);
+        resetItems();
+        if(GAS_URL !== "您的GAS網頁應用程式URL") loadTacticList(); // 防止未設定網址時出錯
+
+        // 保險機制：圖片ready後延遲一秒再次強制重畫，防止球場消失
+        setTimeout(render, 500);
+        setTimeout(render, 1500);
+    }
+
+    function resetItems() {
+        items = [];
+        images.forEach((img, i) => { if(img) items.push({ x: 55 + i * 72, y: 545, r: 24, img: img, type: 'player' }); });
+        items.push({ x: 450, y: 250, r: 15, type: 'ball' });
+        render(); // 確保初次繪製
+    }
+
+    // --- 核心繪圖（恢復球場線條） ---
+    function drawCourtLines() {
+        ctx.strokeStyle = "white"; ctx.lineWidth = 2.5;
+        const courtW = 28 * scale, courtH = 15 * scale;
+        const offsetX = (canvas.width - courtW) / 2, offsetY = 50; 
+        ctx.strokeRect(offsetX, offsetY, courtW, courtH);
+        ctx.beginPath(); ctx.moveTo(canvas.width/2, offsetY); ctx.lineTo(canvas.width/2, offsetY + courtH); ctx.stroke();
+        ctx.beginPath(); ctx.arc(canvas.width/2, offsetY + courtH/2, 1.8 * scale, 0, Math.PI*2); ctx.stroke();
+        [true, false].forEach(isLeft => {
+            const side = isLeft ? 1 : -1, baseLineX = isLeft ? offsetX : offsetX + courtW, centerY = offsetY + courtH/2;
+            const hoopX = baseLineX + side * 1.575 * scale, r3 = 6.75 * scale, intersectY = (courtH/2) - 0.9 * scale, angle = Math.asin(intersectY / r3);
+            ctx.beginPath(); ctx.moveTo(baseLineX, centerY - intersectY); ctx.lineTo(baseLineX + side * 1.575 * scale, centerY - intersectY);
+            ctx.arc(hoopX, centerY, r3, isLeft ? -angle : Math.PI + angle, isLeft ? angle : Math.PI - angle, !isLeft);
+            ctx.lineTo(baseLineX, centerY + intersectY); ctx.stroke();
+            ctx.strokeRect(isLeft ? baseLineX : baseLineX - 5.8 * scale, centerY - 4.9 * scale / 2, 5.8 * scale, 4.9 * scale);
+            ctx.beginPath(); ctx.arc(baseLineX + side * 5.8 * scale, centerY, 1.8 * scale, 0, Math.PI*2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(hoopX, centerY, 7, 0, Math.PI*2); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(baseLineX + side * 1.2 * scale, centerY - 25); ctx.lineTo(baseLineX + side * 1.2 * scale, centerY + 25); ctx.stroke();
+        });
+    }
+
+    function render() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawCourtLines(); // 先畫線條
+        items.forEach(p => {
+            ctx.save();
+            if(p.type === 'ball') {
+                ctx.translate(p.x, p.y);
+                let grad = ctx.createRadialGradient(-p.r*0.3, -p.r*0.3, p.r*0.1, 0, 0, p.r);
+                grad.addColorStop(0, '#f97316'); grad.addColorStop(1, '#7c2d12');
+                ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(0, 0, p.r, 0, Math.PI*2); ctx.fill();
+            } else {
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+                ctx.shadowBlur = 10; ctx.shadowColor = "rgba(0,0,0,0.5)"; 
+                ctx.fillStyle = "white"; ctx.fill(); ctx.clip(); 
+                if(p.img) ctx.drawImage(p.img, p.x - p.r, p.y - p.r, p.r * 2, p.r * 2);
+            }
+            ctx.restore();
+        });
+    }
+
+    // 全螢幕按鈕恢復
     document.getElementById('fullscreen-btn').onclick = () => {
-        if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen();
-        } else {
-            document.exitFullscreen();
-        }
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+        else document.exitFullscreen();
     };
 
-    // 其餘原本的畫布與 GAS 連接邏輯...
-    // (此處保留您上一版本已完成的 JS 程式碼即可)
+    // 其餘原本的動畫模式（keyframes）與 GAS 邏輯...
+    // (因您未提供完整JS，此處省略，但請自行補回前幾回合已完成的劇本、播放與GASfetch邏輯)
+
+    // 觸控位置自適應修正
+    function getPos(e) {
+        const r = canvas.getBoundingClientRect();
+        const cx = e.touches ? e.touches[0].clientX : e.clientX;
+        const cy = e.touches ? e.touches[0].clientY : e.clientY;
+        const s = 900 / r.width; // 處理縮放後的座標偏移
+        return { x: (cx - r.left) * s, y: (cy - r.top) * s };
+    }
+    canvas.addEventListener('mousedown', e => {
+        const p = getPos(e);
+        for(let i = items.length - 1; i >= 0; i--) {
+            if(Math.hypot(items[i].x - p.x, items[i].y - p.y) < items[i].r) { dragTarget = items[i]; break; }
+        }
+    });
+    window.addEventListener('mousemove', e => { if(dragTarget) { const p = getPos(e); dragTarget.x = p.x; dragTarget.y = p.y; render(); } });
+    window.addEventListener('mouseup', () => dragTarget = null);
+    canvas.addEventListener('touchstart', e => {
+        const p = getPos(e);
+        for(let i = items.length - 1; i >= 0; i--) {
+            if(Math.hypot(items[i].x - p.x, items[i].y - p.y) < items[i].r) { dragTarget = items[i]; e.preventDefault(); break; }
+        }
+    }, {passive: false});
+    window.addEventListener('touchmove', e => { if(dragTarget) { const p = getPos(e); dragTarget.x = p.x; dragTarget.y = p.y; render(); e.preventDefault(); } }, {passive: false});
+
+    document.getElementById('reset-btn').onclick = resetItems;
+    init(); // 啟動
 </script>
 </body>
 </html>
