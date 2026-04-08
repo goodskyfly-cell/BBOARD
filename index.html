@@ -3,93 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>籃球戰術平台 Pro - 空間極大化版</title>
+    <title>籃球戰術平台 Pro - 劇本管理版</title>
     <style>
-        /* 基礎佈局：極小化邊距以放大畫布 */
         body { margin: 0; padding: 5px; background-color: #1a202c; font-family: 'Microsoft JhengHei', sans-serif; color: white; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; overflow: hidden; }
-        
         @media (orientation: portrait) {
             body::before { content: "🔄 請旋轉螢幕至橫向"; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a202c; display: flex; justify-content: center; align-items: center; z-index: 9999; font-size: 1.8rem; color: #f39c12; }
             .main-container, .voice-row { display: none !important; }
         }
-
         .main-container { display: flex; gap: 10px; flex: 1; min-height: 0; }
+        .sidebar { width: 180px; background: #2d3748; padding: 10px; border-radius: 8px; display: flex; flex-direction: column; }
+        #tactic-list { flex: 1; overflow-y: auto; margin: 8px 0; border: 1px inset #4a5568; background: #1a202c; border-radius: 4px; }
+        
+        /* 戰術項目樣式：加入刪除按鈕 */
+        .tactic-item { background: #4a5568; padding: 10px; margin-bottom: 6px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; position: relative; display: flex; justify-content: space-between; align-items: center; }
+        .tactic-item:hover { background: #3182ce; }
+        .delete-btn { background: #e53e3e; color: white; border-radius: 4px; padding: 2px 8px; font-size: 0.7rem; margin-left: 5px; cursor: pointer; }
 
-        /* 側邊戰術庫 */
-        .sidebar { width: 160px; background: #2d3748; padding: 10px; border-radius: 8px; display: flex; flex-direction: column; }
-        #tactic-list { flex: 1; overflow-y: auto; margin: 8px 0; border: 1px inset #4a5568; background: #1a202c; }
-        .tactic-item { background: #4a5568; padding: 6px; margin-bottom: 4px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
-
-        /* 球場顯示區 */
         .board-container { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 0; }
-        #step-info { color: #f6e05e; font-weight: bold; font-size: 1rem; margin-bottom: 4px; }
-        canvas { background-color: #f39c12; border: 3px solid #5d3a1a; border-radius: 5px; max-height: 75vh; max-width: 100%; object-fit: contain; touch-action: none; }
+        #step-info { color: #f6e05e; font-weight: bold; font-size: 1.1rem; margin-bottom: 5px; }
+        canvas { background-color: #f39c12; border: 3px solid #5d3a1a; border-radius: 5px; max-height: 72vh; max-width: 100%; object-fit: contain; touch-action: none; }
 
-        /* 控制按鈕區 */
         .control-row { margin-top: 8px; display: flex; gap: 8px; justify-content: center; }
+        .voice-row { display: flex; align-items: center; background: #2d3748; padding: 8px 15px; border-radius: 8px; gap: 15px; margin-top: 5px; }
+        #transcript { flex: 1; font-size: 1.5rem; font-weight: bold; color: #f6e05e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: #1a202c; padding: 5px 15px; border-radius: 5px; }
 
-        /* 整合語音列：文字與按鈕並排 */
-        .voice-row { 
-            display: flex; 
-            align-items: center; 
-            background: #2d3748; 
-            padding: 8px 15px; 
-            border-radius: 8px; 
-            gap: 15px; 
-            margin-top: 5px;
-        }
-        #transcript { 
-            flex: 1; 
-            font-size: 1.5rem; /* 字體加大 */
-            font-weight: bold;
-            color: #f6e05e; 
-            white-space: nowrap; 
-            overflow: hidden; 
-            text-overflow: ellipsis;
-            background: #1a202c;
-            padding: 5px 15px;
-            border-radius: 5px;
-            border: 1px solid #4a5568;
-        }
-
-        button { padding: 8px 16px; border-radius: 5px; font-weight: bold; cursor: pointer; border: none; font-size: 0.9rem; transition: 0.2s; white-space: nowrap; }
+        button { padding: 8px 16px; border-radius: 5px; font-weight: bold; cursor: pointer; border: none; font-size: 0.9rem; }
         .btn-save { background: #3182ce; color: white; width: 100%; }
         .btn-step { background: #d69e2e; color: white; }
         .btn-play { background: #38a169; color: white; }
         .btn-stop { background: #e53e3e; color: white; }
         .btn-reset { background: #718096; color: white; }
         .btn-full { background: #4a5568; color: white; }
-        .btn-mic { background: #3182ce; color: white; }
-        .btn-clear { background: #a0aec0; color: #1a202c; }
-        button:disabled { opacity: 0.5; }
     </style>
 </head>
 <body>
 
 <div class="main-container">
     <div class="sidebar">
-        <h3 style="margin:0; font-size:0.9rem;">📂 戰術庫</h3>
+        <h3 style="margin:0; font-size:0.9rem;">📂 我的戰術庫</h3>
         <div id="tactic-list"></div>
         <button id="save-btn" class="btn-save">💾 儲存戰術</button>
     </div>
 
     <div class="board-container">
-        <div id="step-info">已設定格數：0/20</div>
+        <div id="step-info">已儲存格數：0 / 20</div>
         <canvas id="courtCanvas" width="900" height="600"></canvas>
         <div class="control-row">
-            <button id="next-step-btn" class="btn-step">📌 儲存此格 (上限20)</button>
-            <button id="play-btn" class="btn-play">▶️ 播放</button>
+            <button id="next-step-btn" class="btn-step">📌 儲存此格點位</button>
+            <button id="play-btn" class="btn-play">▶️ 播放戰術</button>
             <button id="stop-btn" class="btn-stop">⏹️ 停止</button>
-            <button id="reset-btn" class="btn-reset">🔄 重置</button>
+            <button id="reset-btn" class="btn-reset">🔄 全重置</button>
             <button id="fullscreen-btn" class="btn-full">📺 全螢幕</button>
         </div>
     </div>
 </div>
 
 <div class="voice-row">
-    <div id="transcript">語音輸入顯示處...</div>
-    <button id="mic-btn" class="btn-mic">🎤 錄音</button>
-    <button id="clear-btn" class="btn-clear">🗑️ 清除</button>
+    <div id="transcript">等待語音指令...</div>
+    <button id="mic-btn" style="background:#3182ce; color:white;">🎤 錄音</button>
+    <button id="clear-btn" style="background:#a0aec0; color:#1a202c;">🗑️ 清除</button>
 </div>
 
 <script>
@@ -117,6 +89,7 @@
         stopAnimation();
         keyframes = [];
         items = [];
+        // 初始化球員，靠底部排列
         images.forEach((img, i) => { if(img) items.push({ x: 55 + i * 72, y: 545, r: 24, img: img, type: 'player' }); });
         items.push({ x: 450, y: 250, r: 15, type: 'ball' });
         updateStepInfo();
@@ -124,8 +97,7 @@
     }
 
     function updateStepInfo() {
-        // 修正 2：明確格數上限顯示
-        document.getElementById('step-info').innerText = `已設定格數：${keyframes.length} / 20`;
+        document.getElementById('step-info').innerText = `已儲存格數：${keyframes.length} / 20`;
         document.getElementById('next-step-btn').disabled = (keyframes.length >= 20);
     }
 
@@ -144,7 +116,6 @@
             ctx.lineTo(baseLineX, centerY + intersectY); ctx.stroke();
             ctx.strokeRect(isLeft ? baseLineX : baseLineX - 5.8 * scale, centerY - 4.9 * scale / 2, 5.8 * scale, 4.9 * scale);
             ctx.beginPath(); ctx.arc(baseLineX + side * 5.8 * scale, centerY, 1.8 * scale, 0, Math.PI*2); ctx.stroke();
-            ctx.beginPath(); ctx.arc(hoopX, centerY, 7, 0, Math.PI*2); ctx.stroke();
         });
     }
 
@@ -152,6 +123,9 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         drawCourtLines();
         items.forEach(p => {
+            // 如果球員座標被移出畫布範圍（y > 590），則不渲染（達成圖示離開球場效果）
+            if (p.y > 590 && p.type === 'player') return;
+
             ctx.save();
             if(p.type === 'ball') {
                 ctx.translate(p.x, p.y);
@@ -167,10 +141,13 @@
         });
     }
 
+    // --- 分格儲存邏輯 ---
     document.getElementById('next-step-btn').onclick = () => {
         if(keyframes.length >= 20) return;
+        // 儲存當前所有物體的位置快照
         keyframes.push(items.map(i => ({ x: i.x, y: i.y })));
         updateStepInfo();
+        alert(`已儲存第 ${keyframes.length} 步。請移動球員至下一步位置（將球員移至畫布邊緣外即可使其消失）。`);
     };
 
     function stopAnimation() {
@@ -182,54 +159,74 @@
     document.getElementById('stop-btn').onclick = stopAnimation;
 
     document.getElementById('play-btn').onclick = () => {
-        if (keyframes.length < 2) return alert("請儲存格數後再播放！");
+        if (keyframes.length < 2) return alert("請先儲存至少兩格點位！");
         isPlaying = true;
         document.getElementById('play-btn').disabled = true;
-        let currentK = 0, progress = 0;
+        let k = 0, progress = 0;
+        
         function animate() {
             if (!isPlaying) return;
-            const start = keyframes[currentK], end = keyframes[currentK + 1];
+            const start = keyframes[k], end = keyframes[k + 1];
             items.forEach((item, idx) => {
                 item.x = start[idx].x + (end[idx].x - start[idx].x) * progress;
                 item.y = start[idx].y + (end[idx].y - start[idx].y) * progress;
             });
             render();
-            progress += 0.02;
+            progress += 0.02; // 移動速度
             if (progress >= 1) {
-                progress = 0; currentK++;
-                if (currentK >= keyframes.length - 1) { stopAnimation(); return; }
+                progress = 0; k++;
+                if (k >= keyframes.length - 1) { stopAnimation(); return; }
             }
             animeId = requestAnimationFrame(animate);
         }
         animate();
     };
 
-    // 修正 3：恢復全螢幕功能
+    // --- 戰術庫管理：儲存與刪除 ---
+    document.getElementById('save-btn').onclick = () => {
+        const name = prompt("請輸入戰術名稱："); if (!name) return;
+        let tactics = JSON.parse(localStorage.getItem('tactics_v3') || '[]');
+         tactics.push({ id: Date.now(), name, keyframes, date: new Date().toLocaleString() });
+        localStorage.setItem('tactics_v3', JSON.stringify(tactics));
+        loadTacticList();
+    };
+
+    function deleteTactic(id, event) {
+        event.stopPropagation(); // 防止觸發載入戰術
+        if(!confirm("確定要刪除此戰術嗎？")) return;
+        let tactics = JSON.parse(localStorage.getItem('tactics_v3') || '[]');
+        tactics = tactics.filter(t => t.id !== id);
+        localStorage.setItem('tactics_v3', JSON.stringify(tactics));
+        loadTacticList();
+    }
+
+    function loadTacticList() {
+        const list = document.getElementById('tactic-list'); list.innerHTML = "";
+        let tactics = JSON.parse(localStorage.getItem('tactics_v3') || '[]');
+        tactics.forEach((t) => {
+            const item = document.createElement('div'); 
+            item.className = 'tactic-item';
+            item.innerHTML = `<span>${t.name}</span><button class="delete-btn">刪除</button>`;
+            
+            // 點擊項目載入戰術
+            item.onclick = () => { 
+                keyframes = t.keyframes; 
+                items.forEach((it, idx) => { it.x = keyframes[0][idx].x; it.y = keyframes[0][idx].y; }); 
+                updateStepInfo(); render(); 
+            };
+            
+            // 點擊刪除按鈕
+            item.querySelector('.delete-btn').onclick = (e) => deleteTactic(t.id, e);
+            list.appendChild(item);
+        });
+    }
+
+    // --- 基本功能 (全螢幕、座標、語音) ---
     document.getElementById('fullscreen-btn').onclick = () => {
         if (!document.fullscreenElement) document.documentElement.requestFullscreen();
         else document.exitFullscreen();
     };
 
-    document.getElementById('save-btn').onclick = () => {
-        const name = prompt("戰術名稱："); if (!name) return;
-        let tactics = JSON.parse(localStorage.getItem('tactics_v2') || '[]');
-        tactics.push({ name, keyframes, date: new Date().toLocaleString() });
-        localStorage.setItem('tactics_v2', JSON.stringify(tactics));
-        loadTacticList();
-    };
-
-    function loadTacticList() {
-        const list = document.getElementById('tactic-list'); list.innerHTML = "";
-        let tactics = JSON.parse(localStorage.getItem('tactics_v2') || '[]');
-        tactics.forEach((t) => {
-            const item = document.createElement('div'); item.className = 'tactic-item';
-            item.innerText = t.name;
-            item.onclick = () => { keyframes = t.keyframes; items.forEach((it, idx) => { it.x = keyframes[0][idx].x; it.y = keyframes[0][idx].y; }); updateStepInfo(); render(); };
-            list.appendChild(item);
-        });
-    }
-
-    // 座標觸控修正
     function getPos(e) {
         const r = canvas.getBoundingClientRect();
         const cx = e.touches ? e.touches[0].clientX : e.clientX;
@@ -251,7 +248,6 @@
     }, {passive: false});
     window.addEventListener('touchmove', e => { if(dragTarget) { const p = getPos(e); dragTarget.x = p.x; dragTarget.y = p.y; render(); e.preventDefault(); } }, {passive: false});
 
-    // 語音功能
     const micBtn = document.getElementById('mic-btn');
     const transcriptDiv = document.getElementById('transcript');
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -268,7 +264,7 @@
             transcriptDiv.innerText = t;
         };
     }
-    document.getElementById('clear-btn').onclick = () => transcriptDiv.innerText = "語音輸入顯示處...";
+    document.getElementById('clear-btn').onclick = () => transcriptDiv.innerText = "等待語音指令...";
     document.getElementById('reset-btn').onclick = fullReset;
     init();
 </script>
