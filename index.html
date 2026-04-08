@@ -3,116 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>籃球戰術平台 Pro - 平板滿版修復版</title>
+    <title>籃球戰術平台 Pro - 分格動畫版</title>
     <style>
-        /* 基礎設定：強制不出現滾動條，並填滿畫面 */
-        body { 
-            margin: 0; 
-            padding: 10px; 
-            background-color: #1a202c; 
-            font-family: 'Microsoft JhengHei', sans-serif; 
-            color: white; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            height: 100vh; 
-            box-sizing: border-box;
-            overflow: hidden; 
-        }
-
-        /* 直立提醒保持不變 */
+        body { margin: 0; padding: 10px; background-color: #1a202c; font-family: 'Microsoft JhengHei', sans-serif; color: white; display: flex; flex-direction: column; align-items: center; height: 100vh; box-sizing: border-box; overflow: hidden; }
         @media (orientation: portrait) {
             body::before { content: "🔄 請將螢幕旋轉至橫向\n以獲得最佳戰術體驗"; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a202c; display: flex; justify-content: center; align-items: center; z-index: 9999; font-size: 1.8rem; color: #f39c12; text-align: center; white-space: pre-wrap; padding: 20px; }
             .main-container, .voice-container, .info { display: none !important; }
         }
-
         .info { text-align: center; margin-bottom: 8px; }
-        .info h2 { margin: 5px 0; font-size: 1.2rem; }
-
-        /* 主要區塊：使用 flex-grow 讓它自動佔滿剩餘空間 */
-        .main-container { 
-            display: flex; 
-            gap: 15px; 
-            flex: 1; 
-            width: 100%; 
-            max-width: 1280px; 
-            overflow: hidden; 
-            align-items: stretch;
-        }
-
-        /* 側邊欄：高度改為自動彈性 */
-        .sidebar { 
-            width: 180px; 
-            background: #2d3748; 
-            padding: 12px; 
-            border-radius: 8px; 
-            border: 1px solid #4a5568; 
-            display: flex; 
-            flex-direction: column; 
-        }
+        .main-container { display: flex; gap: 15px; flex: 1; width: 100%; max-width: 1280px; overflow: hidden; align-items: stretch; }
+        .sidebar { width: 180px; background: #2d3748; padding: 12px; border-radius: 8px; border: 1px solid #4a5568; display: flex; flex-direction: column; }
         #tactic-list { flex: 1; overflow-y: auto; margin: 10px 0; border: 1px inset #4a5568; background: #1a202c; }
         .tactic-item { background: #4a5568; padding: 8px; margin-bottom: 5px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
-
-        /* 畫布容器：這是關鍵，設定最大高度避免推擠 */
-        .board-container { 
-            flex: 1; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center;
-        }
         
-        canvas { 
-            background-color: #f39c12; 
-            border: 4px solid #5d3a1a; 
-            border-radius: 5px; 
-            max-height: 65vh; /* 限制畫布高度，給按鈕留位子 */
-            max-width: 100%; 
-            object-fit: contain; 
-            touch-action: none; 
-        }
+        .board-container { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
+        canvas { background-color: #f39c12; border: 4px solid #5d3a1a; border-radius: 5px; max-height: 60vh; max-width: 100%; object-fit: contain; touch-action: none; }
+        
+        .step-indicator { margin-top: 5px; font-weight: bold; color: #f6e05e; font-size: 1.1rem; }
+        .animation-controls { margin-top: 10px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 
-        .animation-controls { 
-            margin-top: 10px; 
-            display: flex; 
-            gap: 8px; 
-            justify-content: center; 
-            flex-wrap: nowrap; 
-        }
+        .voice-container { width: 100%; max-width: 1150px; background: #2d3748; padding: 8px 15px; border-radius: 8px; margin-top: 8px; }
+        #transcript { background: #1a202c; padding: 8px; border-radius: 5px; min-height: 35px; color: #edf2f7; font-size: 1.1rem; border: 1px inset #4a5568; margin-bottom: 5px; }
 
-        /* 語音區：縮小體積 */
-        .voice-container { 
-            width: 100%; 
-            max-width: 1150px; 
-            background: #2d3748; 
-            padding: 10px 15px; 
-            border-radius: 8px; 
-            margin-top: 10px; 
-        }
-        #transcript { 
-            background: #1a202c; 
-            padding: 10px; 
-            border-radius: 5px; 
-            min-height: 40px; 
-            color: #edf2f7; 
-            font-size: 1.2rem; 
-            border: 1px inset #4a5568; 
-            margin-bottom: 8px; 
-        }
-
-        button { padding: 8px 16px; border-radius: 5px; font-weight: bold; cursor: pointer; border: none; font-size: 0.9rem; }
+        button { padding: 10px 18px; border-radius: 5px; font-weight: bold; cursor: pointer; border: none; font-size: 0.9rem; transition: 0.3s; }
+        .btn-step { background: #d69e2e; color: white; } /* 設定分格 */
+        .btn-play { background: #38a169; color: white; }
+        .btn-stop { background: #e53e3e; color: white; }
+        .btn-reset { background: #edf2f7; color: #2d3748; }
         #save-btn { background: #3182ce; color: white; margin-top: auto; }
-        #record-btn { background: #e53e3e; color: white; }
-        #record-btn.recording { background: #9b2c2c; }
-        #play-btn { background: #38a169; color: white; }
-        #reset-btn { background: #edf2f7; color: #2d3748; }
-        #fullscreen-btn { background: #4a5568; color: white; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
     </style>
 </head>
 <body>
 
 <div class="info">
-    <h2>🏀 籃球戰術平台 Pro</h2>
+    <h2>🏀 籃球戰術平台 Pro - 分格導引模式</h2>
 </div>
 
 <div class="main-container">
@@ -122,12 +47,13 @@
         <button id="save-btn">💾 儲存戰術</button>
     </div>
     <div class="board-container">
+        <div class="step-indicator" id="step-info">目前狀態：設定第 1 格位置</div>
         <canvas id="courtCanvas" width="900" height="600"></canvas>
         <div class="animation-controls">
-            <button id="record-btn">🔴 錄製</button>
-            <button id="play-btn">▶️ 播放</button>
-            <button id="reset-btn">🔄 重置</button>
-            <button id="fullscreen-btn">📺 全螢幕</button>
+            <button id="next-step-btn" class="btn-step">📌 儲存此格點位</button>
+            <button id="play-btn" class="btn-play">▶️ 播放動畫</button>
+            <button id="stop-btn" class="btn-stop">⏹️ 停止播放</button>
+            <button id="reset-btn" class="btn-reset">🔄 全重置</button>
         </div>
     </div>
 </div>
@@ -147,25 +73,35 @@
     const imgNames = ["01.png", "05.png", "06.png", "07.png", "08.png", "09.png", "10.png", "12.png", "13.png", "15.png", "23.png", "89.png"];
     const imgUrls = imgNames.map(name => `https://raw.githubusercontent.com/goodskyfly-cell/newboard/main/${name}`);
 
-    let items = [], dragTarget = null, images = [], animationFrames = [], isRecording = false, recordTimer;
+    let items = [], dragTarget = null, images = [];
+    let keyframes = []; // 儲存每一格的所有球員位置
+    let isPlaying = false;
+    let animeId = null;
 
     async function init() {
         images = await Promise.all(imgUrls.map(url => new Promise(res => {
             const img = new Image(); img.crossOrigin = "anonymous"; img.src = url;
             img.onload = () => res(img); img.onerror = () => res(null);
         })));
-        resetItems();
+        fullReset();
         loadTacticList();
-        setInterval(render, 1000); // 每一秒強制重刷一次確保穩定
     }
 
-    function resetItems() {
+    function fullReset() {
+        stopAnimation();
+        keyframes = [];
         items = [];
         images.forEach((img, i) => { if(img) items.push({ x: 55 + i * 72, y: 545, r: 24, img: img, type: 'player' }); });
         items.push({ x: 450, y: 250, r: 15, type: 'ball' });
+        updateStepInfo();
         render();
     }
 
+    function updateStepInfo() {
+        document.getElementById('step-info').innerText = `已設定格數：${keyframes.length} | 目前正在調整下一格`;
+    }
+
+    // --- 核心繪圖 ---
     function drawCourtLines() {
         ctx.strokeStyle = "white"; ctx.lineWidth = 2.5;
         const courtW = 28 * scale, courtH = 15 * scale;
@@ -204,57 +140,98 @@
         });
     }
 
-    // 動畫與錄製邏輯
-    document.getElementById('record-btn').onclick = function() {
-        if (!isRecording) {
-            animationFrames = []; isRecording = true; this.innerText = "⏹️ 停止"; this.classList.add('recording');
-            recordTimer = setInterval(() => { animationFrames.push(items.map(i => ({x: i.x, y: i.y}))); }, 50);
-        } else {
-            isRecording = false; clearInterval(recordTimer); this.innerText = "🔴 錄製"; this.classList.remove('recording');
-        }
+    // --- 分格動畫邏輯 ---
+    document.getElementById('next-step-btn').onclick = () => {
+        // 儲存當前所有物體的座標快照
+        keyframes.push(items.map(i => ({ x: i.x, y: i.y })));
+        updateStepInfo();
+        alert(`第 ${keyframes.length} 格位置已儲存，請移動球員設定下一格。`);
     };
+
+    function stopAnimation() {
+        isPlaying = false;
+        if(animeId) cancelAnimationFrame(animeId);
+        document.getElementById('play-btn').disabled = false;
+    }
+
+    document.getElementById('stop-btn').onclick = stopAnimation;
 
     document.getElementById('play-btn').onclick = () => {
-        let i = 0; const playTimer = setInterval(() => {
-            if (i >= animationFrames.length) return clearInterval(playTimer);
-            animationFrames[i].forEach((pos, idx) => { items[idx].x = pos.x; items[idx].y = pos.y; });
-            render(); i++;
-        }, 50);
+        if (keyframes.length < 2) return alert("請至少設定 2 格位置才能連成動畫！");
+        isPlaying = true;
+        document.getElementById('play-btn').disabled = true;
+        
+        let currentFrame = 0;
+        let progress = 0; // 0 ~ 1 之間
+        const speed = 0.02; // 移動速度
+
+        function animate() {
+            if (!isPlaying) return;
+
+            const start = keyframes[currentFrame];
+            const end = keyframes[currentFrame + 1];
+
+            // 線性插值計算位置
+            items.forEach((item, idx) => {
+                item.x = start[idx].x + (end[idx].x - start[idx].x) * progress;
+                item.y = start[idx].y + (end[idx].y - start[idx].y) * progress;
+            });
+
+            render();
+            progress += speed;
+
+            if (progress >= 1) {
+                progress = 0;
+                currentFrame++;
+                if (currentFrame >= keyframes.length - 1) {
+                    stopAnimation();
+                    alert("動畫播放完畢");
+                    return;
+                }
+            }
+            animeId = requestAnimationFrame(animate);
+        }
+        animate();
     };
 
+    // --- 其他功能 ---
     document.getElementById('save-btn').onclick = () => {
         const name = prompt("戰術名稱："); if (!name) return;
-        let tactics = JSON.parse(localStorage.getItem('tactics') || '[]');
-        tactics.push({ name, frames: animationFrames, date: new Date().toLocaleString() });
-        localStorage.setItem('tactics', JSON.stringify(tactics)); loadTacticList();
+        let tactics = JSON.parse(localStorage.getItem('tactics_steps') || '[]');
+        tactics.push({ name, keyframes: keyframes, date: new Date().toLocaleString() });
+        localStorage.setItem('tactics_steps', JSON.stringify(tactics));
+        loadTacticList();
     };
 
     function loadTacticList() {
         const list = document.getElementById('tactic-list'); list.innerHTML = "";
-        let tactics = JSON.parse(localStorage.getItem('tactics') || '[]');
+        let tactics = JSON.parse(localStorage.getItem('tactics_steps') || '[]');
         tactics.forEach((t) => {
             const item = document.createElement('div'); item.className = 'tactic-item';
-            item.innerText = t.name; item.onclick = () => { animationFrames = t.frames; render(); };
+            item.innerText = t.name; 
+            item.onclick = () => { 
+                keyframes = t.keyframes; 
+                items.forEach((item, idx) => {
+                    item.x = keyframes[0][idx].x;
+                    item.y = keyframes[0][idx].y;
+                });
+                updateStepInfo(); render(); 
+            };
             list.appendChild(item);
         });
     }
 
-    document.getElementById('fullscreen-btn').onclick = () => {
-        if (!document.fullscreenElement) document.documentElement.requestFullscreen();
-        else document.exitFullscreen();
-    };
-
-    // 觸控位置修正
     function getPos(e) {
         const r = canvas.getBoundingClientRect();
         const cx = e.touches ? e.touches[0].clientX : e.clientX;
         const cy = e.touches ? e.touches[0].clientY : e.clientY;
-        const scaleX = canvas.width / r.width;
-        const scaleY = canvas.height / r.height;
+        const scaleX = 900 / r.width;
+        const scaleY = 600 / r.height;
         return { x: (cx - r.left) * scaleX, y: (cy - r.top) * scaleY };
     }
 
     canvas.addEventListener('mousedown', e => {
+        if(isPlaying) return;
         const p = getPos(e);
         for(let i = items.length - 1; i >= 0; i--) {
             if(Math.hypot(items[i].x - p.x, items[i].y - p.y) < items[i].r) { dragTarget = items[i]; break; }
@@ -262,7 +239,9 @@
     });
     window.addEventListener('mousemove', e => { if(dragTarget) { const p = getPos(e); dragTarget.x = p.x; dragTarget.y = p.y; render(); } });
     window.addEventListener('mouseup', () => dragTarget = null);
+    
     canvas.addEventListener('touchstart', e => {
+        if(isPlaying) return;
         const p = getPos(e);
         for(let i = items.length - 1; i >= 0; i--) {
             if(Math.hypot(items[i].x - p.x, items[i].y - p.y) < items[i].r) { dragTarget = items[i]; e.preventDefault(); break; }
@@ -271,7 +250,7 @@
     window.addEventListener('touchmove', e => { if(dragTarget) { const p = getPos(e); dragTarget.x = p.x; dragTarget.y = p.y; render(); e.preventDefault(); } }, {passive: false});
     window.addEventListener('touchend', () => dragTarget = null);
 
-    document.getElementById('reset-btn').onclick = resetItems;
+    document.getElementById('reset-btn').onclick = fullReset;
     init();
 </script>
 </body>
