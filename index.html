@@ -2,21 +2,48 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>籃球戰術平台 Pro</title>
-    <link rel="stylesheet" href="style.css">
+    <title>籃球戰術平台 Pro - 完整修正版</title>
+    <style>
+        body { margin: 0; padding: 20px; background-color: #1a202c; font-family: 'Microsoft JhengHei', sans-serif; color: white; display: flex; flex-direction: column; align-items: center; }
+        .info { text-align: center; margin-bottom: 15px; }
+        .main-container { display: flex; gap: 20px; margin-bottom: 20px; align-items: flex-start; }
+        
+        /* 側邊戰術庫 */
+        .sidebar { width: 220px; background: #2d3748; padding: 15px; border-radius: 8px; border: 1px solid #4a5568; display: flex; flex-direction: column; height: 600px; }
+        #tactic-list { flex-grow: 1; overflow-y: auto; margin: 10px 0; border: 1px inset #4a5568; padding: 5px; }
+        .tactic-item { background: #4a5568; padding: 10px; margin-bottom: 8px; border-radius: 4px; cursor: pointer; font-size: 0.9rem; transition: 0.2s; }
+        .tactic-item:hover { background: #3182ce; }
+
+        /* 畫布區 */
+        canvas { background-color: #f39c12; border: 5px solid #5d3a1a; border-radius: 5px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); cursor: grab; touch-action: none; }
+        .animation-controls { margin-top: 15px; display: flex; gap: 12px; justify-content: center; }
+
+        /* 語音區 */
+        .voice-container { width: 1150px; background: #2d3748; padding: 20px; border-radius: 8px; border: 1px solid #4a5568; margin-top: 10px; }
+        #transcript { background: #1a202c; padding: 20px; border-radius: 5px; min-height: 60px; color: #edf2f7; font-size: 1.8rem; border: 1px inset #4a5568; margin-bottom: 15px; }
+
+        button { padding: 12px 24px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 1rem; }
+        #save-btn { background: #3182ce; color: white; width: 100%; }
+        #record-btn { background: #e53e3e; color: white; }
+        #record-btn.recording { background: #9b2c2c; box-shadow: 0 0 10px rgba(229, 62, 62, 0.5); }
+        #play-btn { background: #38a169; color: white; }
+        #reset-btn { background: #edf2f7; color: #2d3748; }
+        #mic-btn { background: #3182ce; color: white; }
+        #clear-btn { background: #718096; color: white; }
+    </style>
 </head>
 <body>
 
 <div class="info">
-    <h2>🏀 籃球戰術平台</h2>
-    <div id="status-bar">狀態：準備就緒</div>
+    <h2>🏀 籃球戰術平台 Pro</h2>
+    <p>狀態：線條修正完成 | 支援動畫錄製與戰術儲存</p>
 </div>
 
 <div class="main-container">
     <div class="sidebar">
         <h3>📂 我的戰術庫</h3>
         <div id="tactic-list"></div>
-        <button id="save-btn" class="secondary-btn">💾 儲存當前戰術</button>
+        <button id="save-btn">💾 儲存當前戰術</button>
     </div>
 
     <div class="board-container">
@@ -31,14 +58,241 @@
 
 <div class="voice-container">
     <div id="transcript">等待語音輸入...</div>
-    <div class="button-group">
+    <div class="button-group" style="display:flex; gap:15px; justify-content:center;">
         <button id="mic-btn">🎤 語音記錄</button>
         <button id="clear-btn">🗑️ 清除文字</button>
     </div>
 </div>
 
-<script src="js/tactics.js"></script>
-<script src="js/animation.js"></script>
-<script src="js/library.js"></script>
+<script>
+    const canvas = document.getElementById('courtCanvas');
+    const ctx = canvas.getContext('2d');
+    const scale = 30; 
+
+    // --- 資料與狀態 ---
+    const imgNames = ["01.png", "05.png", "06.png", "07.png", "08.png", "09.png", "10.png", "12.png", "13.png", "15.png", "23.png", "89.png"];
+    const imgUrls = imgNames.map(name => `https://raw.githubusercontent.com/goodskyfly-cell/newboard/main/${name}`);
+
+    let items = [];
+    let dragTarget = null;
+    let images = [];
+    let animationFrames = [];
+    let isRecording = false;
+    let recordTimer;
+
+    // --- 初始化 ---
+    async function init() {
+        const promises = imgUrls.map(url => {
+            return new Promise(res => {
+                const img = new Image();
+                img.crossOrigin = "anonymous";
+                img.src = url;
+                img.onload = () => res(img);
+                img.onerror = () => res(null); // 防止單一圖片失效導致當機
+            });
+        });
+        images = await Promise.all(promises);
+        resetItems();
+        loadTacticList();
+        render(); // 確保初次繪製
+    }
+
+    function resetItems() {
+        items = [];
+        images.forEach((img, i) => {
+            if(img) items.push({ x: 55 + i * 72, y: 545, r: 24, img: img, type: 'player' });
+        });
+        items.push({ x: 450, y: 250, r: 15, type: 'ball' });
+        render();
+    }
+
+    // --- 核心繪圖 (修正線條邏輯) ---
+    function drawCourtLines() {
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = 2.5;
+        const courtW = 28 * scale, courtH = 15 * scale;
+        const offsetX = (canvas.width - courtW) / 2, offsetY = 50; 
+
+        // 邊框與中線
+        ctx.strokeRect(offsetX, offsetY, courtW, courtH);
+        ctx.beginPath();
+        ctx.moveTo(canvas.width/2, offsetY); ctx.lineTo(canvas.width/2, offsetY + courtH);
+        ctx.stroke();
+
+        // 中圈
+        ctx.beginPath();
+        ctx.arc(canvas.width/2, offsetY + courtH/2, 1.8 * scale, 0, Math.PI*2);
+        ctx.stroke();
+
+        // 左右半場
+        [true, false].forEach(isLeft => {
+            const side = isLeft ? 1 : -1;
+            const baseLineX = isLeft ? offsetX : offsetX + courtW;
+            const centerY = offsetY + courtH/2;
+            const hoopX = baseLineX + side * 1.575 * scale;
+
+            // 三分線
+            const r3 = 6.75 * scale;
+            const intersectY = (courtH/2) - 0.9 * scale;
+            const angle = Math.asin(intersectY / r3);
+            
+            ctx.beginPath();
+            ctx.moveTo(baseLineX, centerY - intersectY);
+            ctx.lineTo(baseLineX + side * 1.575 * scale, centerY - intersectY);
+            ctx.arc(hoopX, centerY, r3, isLeft ? -angle : Math.PI + angle, isLeft ? angle : Math.PI - angle, !isLeft);
+            ctx.lineTo(baseLineX, centerY + intersectY);
+            ctx.stroke();
+
+            // 禁區
+            ctx.strokeRect(isLeft ? baseLineX : baseLineX - 5.8 * scale, centerY - 4.9 * scale / 2, 5.8 * scale, 4.9 * scale);
+            
+            // 罰球圈與籃框
+            ctx.beginPath(); ctx.arc(baseLineX + side * 5.8 * scale, centerY, 1.8 * scale, 0, Math.PI*2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(hoopX, centerY, 7, 0, Math.PI*2); ctx.stroke();
+            
+            // 籃板
+            ctx.beginPath();
+            ctx.moveTo(baseLineX + side * 1.2 * scale, centerY - 25);
+            ctx.lineTo(baseLineX + side * 1.2 * scale, centerY + 25);
+            ctx.stroke();
+        });
+    }
+
+    function render() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawCourtLines();
+        items.forEach(p => {
+            ctx.save();
+            if(p.type === 'ball') {
+                ctx.translate(p.x, p.y);
+                let grad = ctx.createRadialGradient(-p.r*0.3, -p.r*0.3, p.r*0.1, 0, 0, p.r);
+                grad.addColorStop(0, '#f97316'); grad.addColorStop(1, '#7c2d12');
+                ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(0, 0, p.r, 0, Math.PI*2); ctx.fill();
+                ctx.strokeStyle = "rgba(0,0,0,0.6)"; ctx.lineWidth = 1.5;
+                ctx.beginPath(); ctx.moveTo(0, -p.r); ctx.lineTo(0, p.r); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(-p.r, 0); ctx.lineTo(p.r, 0); ctx.stroke();
+            } else {
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+                ctx.shadowBlur = 10; ctx.shadowColor = "black"; ctx.fillStyle = "white"; ctx.fill();
+                ctx.strokeStyle = "white"; ctx.lineWidth = 2; ctx.stroke();
+                ctx.clip(); 
+                if(p.img) ctx.drawImage(p.img, p.x - p.r, p.y - p.r, p.r * 2, p.r * 2);
+            }
+            ctx.restore();
+        });
+    }
+
+    // --- 動畫錄製邏輯 ---
+    const recordBtn = document.getElementById('record-btn');
+    const playBtn = document.getElementById('play-btn');
+
+    recordBtn.onclick = () => {
+        if (!isRecording) {
+            animationFrames = [];
+            isRecording = true;
+            recordBtn.innerText = "⏹️ 停止錄製中...";
+            recordBtn.classList.add('recording');
+            recordTimer = setInterval(() => {
+                animationFrames.push(items.map(i => ({x: i.x, y: i.y})));
+            }, 50); // 20fps
+        } else {
+            isRecording = false;
+            clearInterval(recordTimer);
+            recordBtn.innerText = "🔴 開始錄製動畫";
+            recordBtn.classList.remove('recording');
+            alert(`動畫錄製完成！共 ${animationFrames.length} 影格。別忘了點擊左側儲存！`);
+        }
+    };
+
+    playBtn.onclick = () => {
+        if (animationFrames.length === 0) return alert("請先錄製一段動畫！");
+        let i = 0;
+        const playTimer = setInterval(() => {
+            if (i >= animationFrames.length) return clearInterval(playTimer);
+            animationFrames[i].forEach((pos, idx) => {
+                items[idx].x = pos.x; items[idx].y = pos.y;
+            });
+            render();
+            i++;
+        }, 50);
+    };
+
+    // --- 戰術庫儲存 (LocalStorage) ---
+    const saveBtn = document.getElementById('save-btn');
+    saveBtn.onclick = () => {
+        if (animationFrames.length === 0) return alert("錄製完畢後才能儲存戰術！");
+        const name = prompt("請輸入戰術名稱：", "快攻戰術 01");
+        if (!name) return;
+        const tactic = { name, frames: animationFrames, date: new Date().toLocaleString() };
+        let tactics = JSON.parse(localStorage.getItem('tactics') || '[]');
+        tactics.push(tactic);
+        localStorage.setItem('tactics', JSON.stringify(tactics));
+        loadTacticList();
+    };
+
+    function loadTacticList() {
+        const list = document.getElementById('tactic-list');
+        list.innerHTML = "";
+        let tactics = JSON.parse(localStorage.getItem('tactics') || '[]');
+        tactics.forEach((t, idx) => {
+            const item = document.createElement('div');
+            item.className = 'tactic-item';
+            item.innerText = `${t.name}\n${t.date}`;
+            item.onclick = () => {
+                animationFrames = t.frames;
+                alert(`已載入戰術：${t.name}`);
+            };
+            list.appendChild(item);
+        });
+    }
+
+    // --- 語音功能 ---
+    const micBtn = document.getElementById('mic-btn');
+    const transcriptDiv = document.getElementById('transcript');
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (SpeechRecognition) {
+        const rec = new SpeechRecognition();
+        rec.lang = 'zh-TW'; rec.interimResults = true; rec.continuous = true;
+        let micOn = false;
+        micBtn.onclick = () => {
+            if(!micOn) { rec.start(); micBtn.innerText = "🛑 停止紀錄"; micOn = true; }
+            else { rec.stop(); micBtn.innerText = "🎤 語音記錄"; micOn = false; }
+        };
+        rec.onresult = (e) => {
+            let t = ""; for(let i=e.resultIndex; i<e.results.length; i++) { t += e.results[i][0].transcript; }
+            transcriptDiv.innerText = t;
+        };
+    }
+
+    // --- 拖曳邏輯 ---
+    function getPos(e) {
+        const r = canvas.getBoundingClientRect();
+        const cx = e.touches ? e.touches[0].clientX : e.clientX;
+        const cy = e.touches ? e.touches[0].clientY : e.clientY;
+        return { x: cx - r.left, y: cy - r.top };
+    }
+    canvas.addEventListener('mousedown', e => {
+        const p = getPos(e);
+        for(let i = items.length - 1; i >= 0; i--) {
+            if(Math.hypot(items[i].x - p.x, items[i].y - p.y) < items[i].r) { dragTarget = items[i]; break; }
+        }
+    });
+    window.addEventListener('mousemove', e => { if(dragTarget) { const p = getPos(e); dragTarget.x = p.x; dragTarget.y = p.y; render(); } });
+    window.addEventListener('mouseup', () => dragTarget = null);
+    canvas.addEventListener('touchstart', e => {
+        const p = getPos(e);
+        for(let i = items.length - 1; i >= 0; i--) {
+            if(Math.hypot(items[i].x - p.x, items[i].y - p.y) < items[i].r) { dragTarget = items[i]; e.preventDefault(); break; }
+        }
+    }, {passive: false});
+    window.addEventListener('touchmove', e => { if(dragTarget) { const p = getPos(e); dragTarget.x = p.x; dragTarget.y = p.y; render(); e.preventDefault(); } }, {passive: false});
+    window.addEventListener('touchend', () => dragTarget = null);
+
+    document.getElementById('reset-btn').onclick = resetItems;
+    document.getElementById('clear-btn').onclick = () => transcriptDiv.innerText = "等待語音輸入...";
+
+    init();
+</script>
 </body>
 </html>
