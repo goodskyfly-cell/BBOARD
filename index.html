@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>籃球戰術平台 Pro</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="info">
+    <h2>🏀 籃球戰術平台</h2>
+    <div id="status-bar">狀態：準備就緒</div>
+</div>
+
+<div class="main-container">
+    <div class="sidebar">
+        <h3>📂 我的戰術庫</h3>
+        <div id="tactic-list"></div>
+        <button id="save-btn" class="secondary-btn">💾 儲存當前戰術</button>
+    </div>
+
+    <div class="board-container">
+        <canvas id="courtCanvas" width="900" height="600"></canvas>
+        <div class="animation-controls">
+            <button id="record-btn">🔴 開始錄製動畫</button>
+            <button id="play-btn">▶️ 播放動畫</button>
+            <button id="reset-btn">🔄 重置位置</button>
+        </div>
+    </div>
+</div>
+
+<div class="voice-container">
+    <div id="transcript">等待語音輸入...</div>
+    <div class="button-group">
+        <button id="mic-btn">🎤 語音記錄</button>
+        <button id="clear-btn">🗑️ 清除文字</button>
+    </div>
+</div>
+
+<script src="js/tactics.js"></script>
+<script src="js/animation.js"></script>
+<script src="js/library.js"></script>
+</body>
+</html>
