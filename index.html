@@ -3,110 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>籃球戰術平台 Pro - 平板空間優化版</title>
+    <title>籃球戰術平台 Pro - 穩定操作優化版</title>
     <style>
         body { 
-            margin: 0; 
-            padding: 0; 
-            background-color: #1a202c; 
-            font-family: 'Microsoft JhengHei', sans-serif; 
-            color: white; 
-            display: flex; 
-            flex-direction: column; 
-            height: 100vh; 
-            box-sizing: border-box;
-            overflow: hidden; 
+            margin: 0; padding: 0; background-color: #1a202c; 
+            font-family: 'Microsoft JhengHei', sans-serif; color: white; 
+            display: flex; flex-direction: column; height: 100vh; 
+            box-sizing: border-box; overflow: hidden; 
         }
 
         /* 側邊隱藏抽屜 */
         .sidebar { 
-            position: fixed; 
-            left: -220px; 
-            top: 0; 
-            width: 200px; 
-            height: 100%; 
-            background: #2d3748; 
-            padding: 15px; 
-            border-radius: 0 8px 8px 0;
-            z-index: 1000;
-            transition: 0.3s ease-out;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+            position: fixed; left: -220px; top: 0; width: 200px; height: 100%; 
+            background: #2d3748; padding: 15px; border-radius: 0 8px 8px 0;
+            z-index: 1000; transition: 0.3s ease-out; box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+            display: flex; flex-direction: column;
         }
         .sidebar.active { left: 0; }
-
-        /* 縮小後的標籤，避免佔用垂直空間 */
         .sidebar-toggle { 
-            position: absolute; 
-            right: -35px; 
-            top: 10px; 
-            width: 35px; 
-            height: 80px; 
-            background: #3182ce; 
-            color: white; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            writing-mode: vertical-rl; 
-            border-radius: 0 8px 8px 0; 
-            cursor: pointer; 
-            font-size: 0.85rem; 
-            font-weight: bold;
+            position: absolute; right: -35px; top: 10px; width: 35px; height: 80px; 
+            background: #3182ce; color: white; display: flex; align-items: center; 
+            justify-content: center; writing-mode: vertical-rl; border-radius: 0 8px 8px 0; 
+            cursor: pointer; font-size: 0.85rem; font-weight: bold;
         }
 
-        /* 核心內容區：確保不撐破螢幕 */
         .main-content { 
-            flex: 1; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: flex-start; /* 改為靠上排列，預留空間給下方 */
-            min-height: 0; 
-            padding: 5px; 
+            flex: 1; display: flex; flex-direction: column; 
+            align-items: center; justify-content: flex-start; 
+            min-height: 0; padding: 5px; 
         }
 
-        #step-info { color: #f6e05e; font-weight: bold; font-size: 1rem; margin-top: 5px; }
+        #step-info { color: #f6e05e; font-weight: bold; font-size: 1rem; margin: 5px 0; }
 
         canvas { 
-            background-color: #f39c12; 
-            border: 3px solid #5d3a1a; 
-            border-radius: 5px; 
-            /* 關鍵修正：將畫布高度限制在 65%，確保下方按鈕列可見 */
-            max-height: 65vh; 
-            max-width: 95%; 
-            object-fit: contain; 
-            touch-action: none; 
-            margin-top: 5px;
+            background-color: #f39c12; border: 3px solid #5d3a1a; border-radius: 5px; 
+            max-height: 60vh; max-width: 95%; object-fit: contain; touch-action: none; 
         }
 
-        /* 控制按鈕列 */
-        .control-row { margin: 8px 0; display: flex; gap: 6px; justify-content: center; flex-wrap: nowrap; }
+        .control-row { margin: 10px 0; display: flex; gap: 8px; justify-content: center; }
 
-        /* 語音文字列：強制固定在底部 */
         .voice-row { 
-            display: flex; 
-            align-items: center; 
-            background: #2d3748; 
-            padding: 8px 12px; 
-            border-top: 1px solid #4a5568; 
-            gap: 10px; 
-            height: 60px; /* 固定高度，防止被裁切 */
+            display: flex; align-items: center; background: #2d3748; 
+            padding: 8px 12px; border-top: 1px solid #4a5568; gap: 10px; height: 60px;
         }
         #transcript { 
-            flex: 1; 
-            font-size: 1.3rem; 
-            font-weight: bold;
-            color: #f6e05e; 
-            white-space: nowrap; 
-            overflow: hidden; 
-            text-overflow: ellipsis; 
-            background: #1a202c; 
-            padding: 5px 12px; 
-            border-radius: 5px; 
-            height: 35px;
-            line-height: 35px;
+            flex: 1; font-size: 1.3rem; font-weight: bold; color: #f6e05e; 
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
+            background: #1a202c; padding: 5px 12px; border-radius: 5px; height: 35px; line-height: 35px;
         }
 
-        button { padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; border: none; font-size: 0.85rem; }
+        button { padding: 8px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; border: none; font-size: 0.9rem; }
         .btn-step { background: #d69e2e; color: white; }
         .btn-play { background: #38a169; color: white; }
         .btn-stop { background: #e53e3e; color: white; }
@@ -120,7 +66,7 @@
 <div class="sidebar" id="sidebar">
     <div class="sidebar-toggle" onclick="toggleSidebar()">📁 戰術庫</div>
     <h3 style="margin:0; font-size:1rem; text-align:center;">劇本列表</h3>
-    <div id="tactic-list" style="flex:1; overflow-y:auto; margin: 10px 0; background: #1a202c;"></div>
+    <div id="tactic-list" style="flex:1; overflow-y:auto; margin: 10px 0; background: #1a202c; border-radius: 4px; padding: 5px;"></div>
     <button id="save-btn" style="background:#3182ce; color:white; width:100%;">💾 儲存戰術</button>
 </div>
 
@@ -144,10 +90,14 @@
 <script>
     const canvas = document.getElementById('courtCanvas');
     const ctx = canvas.getContext('2d');
-    const scale = 30; 
-    let items = [], images = [];
+    const scale = 30;
     const imgNames = ["01.png", "05.png", "06.png", "07.png", "08.png", "09.png", "10.png", "12.png", "13.png", "15.png", "23.png", "89.png"];
     const imgUrls = imgNames.map(name => `https://raw.githubusercontent.com/goodskyfly-cell/newboard/main/${name}`);
+
+    let items = [], images = [], dragTarget = null;
+    let keyframes = []; // 儲存戰術步驟
+    let isPlaying = false;
+    let animeId = null;
 
     function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); }
 
@@ -160,7 +110,7 @@
             img.onerror = () => res(null);
         }));
         images = await Promise.all(promises);
-        resetItems();
+        resetBoard();
         setTimeout(render, 500);
     }
 
@@ -186,6 +136,7 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         drawCourtLines();
         items.forEach(p => {
+            if (p.y > 590 && p.type === 'player') return; // 球員離開球場邏輯
             ctx.save();
             if(p.type === 'ball') {
                 ctx.translate(p.x, p.y); ctx.fillStyle = "#f97316"; 
@@ -199,12 +150,76 @@
         });
     }
 
-    function resetItems() {
+    function resetBoard() {
+        keyframes = [];
         items = [];
         images.forEach((img, i) => { if(img) items.push({ x: 55 + i * 72, y: 545, r: 24, img: img, type: 'player' }); });
         items.push({ x: 450, y: 250, r: 15, type: 'ball' });
+        updateStepInfo();
         render();
     }
+
+    function updateStepInfo() {
+        document.getElementById('step-info').innerText = `已儲存：${keyframes.length}/20 格點位`;
+    }
+
+    // 按鍵功能綁定
+    document.getElementById('next-step-btn').onclick = () => {
+        if(keyframes.length >= 20) return alert("已達上限");
+        keyframes.push(items.map(i => ({ x: i.x, y: i.y })));
+        updateStepInfo();
+        alert(`已儲存第 ${keyframes.length} 步`);
+    };
+
+    document.getElementById('play-btn').onclick = () => {
+        if (keyframes.length < 2) return alert("請先儲存至少兩格點位！");
+        isPlaying = true;
+        let k = 0, progress = 0;
+        function animate() {
+            if (!isPlaying) return;
+            const start = keyframes[k], end = keyframes[k + 1];
+            items.forEach((item, idx) => {
+                item.x = start[idx].x + (end[idx].x - start[idx].x) * progress;
+                item.y = start[idx].y + (end[idx].y - start[idx].y) * progress;
+            });
+            render();
+            progress += 0.03;
+            if (progress >= 1) {
+                progress = 0; k++;
+                if (k >= keyframes.length - 1) { isPlaying = false; return; }
+            }
+            animeId = requestAnimationFrame(animate);
+        }
+        animate();
+    };
+
+    document.getElementById('stop-btn').onclick = () => {
+        isPlaying = false;
+        if(animeId) cancelAnimationFrame(animeId);
+    };
+
+    document.getElementById('fullscreen-btn').onclick = () => {
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+        else document.exitFullscreen();
+    };
+
+    // 拖曳邏輯
+    function getPos(e) {
+        const r = canvas.getBoundingClientRect();
+        const cx = e.touches ? e.touches[0].clientX : e.clientX;
+        const cy = e.touches ? e.touches[0].clientY : e.clientY;
+        return { x: (cx - r.left) * (900 / r.width), y: (cy - r.top) * (600 / r.height) };
+    }
+    canvas.addEventListener('touchstart', e => {
+        const p = getPos(e);
+        for(let i = items.length - 1; i >= 0; i--) {
+            if(Math.hypot(items[i].x - p.x, items[i].y - p.y) < items[i].r) { dragTarget = items[i]; e.preventDefault(); break; }
+        }
+    }, {passive: false});
+    window.addEventListener('touchmove', e => { 
+        if(dragTarget) { const p = getPos(e); dragTarget.x = p.x; dragTarget.y = p.y; render(); e.preventDefault(); } 
+    }, {passive: false});
+    window.addEventListener('touchend', () => dragTarget = null);
 
     init();
 </script>
