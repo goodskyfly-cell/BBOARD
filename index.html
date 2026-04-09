@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>籃球戰術平台 Pro - 語音強化版</title>
+    <title>籃球戰術平台 Pro - 功能恢復完整版</title>
     <style>
         :root { --accent: #3182ce; --bg: #000000; --panel: rgba(20, 20, 20, 0.95); --border: rgba(255,255,255,0.1); }
         body { margin: 0; padding: 0; background-color: var(--bg); overflow: hidden; height: 100vh; display: flex; font-family: -apple-system, sans-serif; color: white; }
@@ -26,32 +26,42 @@
             padding: 12px 20px; cursor: pointer; font-weight: bold; font-size: 18px; 
             white-space: nowrap; transition: 0.3s;
         }
-        .voice-btn.active { background: #f56565; animation: pulse 1.5s infinite; box-shadow: 0 0 15px rgba(245,101,101,0.6); }
+        .voice-btn.active { background: #f56565; animation: pulse 1.5s infinite; }
         
-        /* 加大顯示字體 */
         input#v-output { 
             flex: 1; background: #1a202c; border: 1px solid #4a5568; 
             color: #f6e05e; padding: 12px 15px; border-radius: 8px; 
-            outline: none; font-size: 22px; font-weight: bold; /* 字體顯著加大 */
+            outline: none; font-size: 22px; font-weight: bold;
         }
 
-        /* 側邊欄與控制列 (維持先前優化) */
+        /* 側邊欄 */
         .sidebar { position: absolute; top: 0; height: 100%; background: var(--panel); transition: 0.3s; z-index: 900; display: flex; flex-direction: column; }
         .sidebar-left { left: -260px; width: 260px; border-right: 1px solid var(--border); }
         .sidebar-left.active { left: 0; }
         .sidebar-right { right: -200px; width: 200px; border-left: 1px solid var(--border); padding: 20px 15px; box-sizing: border-box; gap: 12px; }
         .sidebar-right.active { right: 0; }
+        
         .tab { position: absolute; width: 35px; height: 100px; display: flex; align-items: center; justify-content: center; writing-mode: vertical-lr; cursor: pointer; font-size: 12px; font-weight: bold; z-index: 901; }
         .left-tab { right: -35px; top: 120px; background: #3182ce; border-radius: 0 8px 8px 0; }
         .right-tab { left: -35px; top: 120px; background: #38a169; border-radius: 8px 0 0 8px; }
 
+        /* 底部播放控制 */
         .play-controls {
             position: absolute; bottom: -100px; left: 50%; transform: translateX(-50%);
             z-index: 1100; transition: 0.4s; background: var(--panel); 
-            padding: 15px 30px; border-radius: 25px; display: flex; gap: 20px;
+            padding: 15px 30px; border-radius: 25px; display: flex; gap: 20px; border: 1px solid var(--border);
         }
         .play-controls.active { bottom: 40px; }
-        .control-btn { border: none; border-radius: 50%; width: 55px; height: 55px; cursor: pointer; font-size: 24px; }
+        .control-btn { border: none; border-radius: 50%; width: 55px; height: 55px; cursor: pointer; font-size: 24px; color: white; display: flex; align-items: center; justify-content: center; }
+
+        .panel-btn { width: 100%; padding: 12px; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; text-align: left; font-size: 14px; }
+        .btn-green { background: #38a169; } 
+        .btn-blue { background: #3182ce; } 
+        .btn-purple { background: #805ad5; } 
+        .btn-gray { background: #4a5568; } 
+        .btn-red { background: #e53e3e; }
+
+        .tactic-item { background: rgba(255,255,255,0.05); border-radius: 6px; padding: 10px; margin-bottom: 8px; display: flex; justify-content: space-between; font-size: 13px; cursor: pointer; }
 
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
     </style>
@@ -60,30 +70,32 @@
 
 <div class="stage" id="mainStage">
     <div class="play-controls" id="playUI">
-        <button class="control-btn" style="background:#38a169;color:white;" onclick="resumeAnim()">▶</button>
-        <button class="control-btn" style="background:#ecc94b;color:white;" onclick="pauseAnim()">Ⅱ</button>
-        <button class="control-btn" style="background:#e53e3e;color:white;" onclick="stopAnim()">■</button>
+        <button class="control-btn" style="background:#38a169;" onclick="resumeAnim()">▶</button>
+        <button class="control-btn" style="background:#ecc94b;" onclick="pauseAnim()">Ⅱ</button>
+        <button class="control-btn" style="background:#e53e3e;" onclick="stopAnim()">■</button>
     </div>
 
     <div class="voice-bar" id="dragVoice">
         <button class="voice-btn" id="v-toggle" onclick="toggleVoice()">🎤 開始說話</button>
-        <input type="text" id="v-output" placeholder="辨識結果將顯示於此..." readonly>
-        <button style="background:#4a5568; color:white; border:none; padding:10px; border-radius:8px; cursor:pointer;" onclick="document.getElementById('v-output').value=''">重設</button>
+        <input type="text" id="v-output" placeholder="戰術語音紀錄..." readonly>
+        <button style="background:#4a5568; color:white; border:none; padding:10px; border-radius:8px;" onclick="document.getElementById('v-output').value=''">重設</button>
     </div>
 
     <div class="sidebar sidebar-left" id="sidebarL">
         <div class="tab left-tab" onclick="toggleSidebar('L')">📁 戰術庫 ◀</div>
-        <div style="padding: 20px 15px;">🏀 紀錄點位：<span id="saveCount">0</span></div>
-        <div class="tactic-list" id="tacticList" style="flex:1; overflow-y:auto; padding:10px;"></div>
+        <div style="padding: 20px 15px; border-bottom: 1px solid var(--border);">🏀 紀錄：<span id="saveCount">0</span> 點位</div>
+        <div id="tacticList" style="flex:1; overflow-y:auto; padding:10px;"></div>
     </div>
 
     <div class="sidebar sidebar-right" id="sidebarR">
         <div class="tab right-tab" onclick="toggleSidebar('R')">⚙️ 面板 ◀</div>
-        <button style="width:100%; padding:12px; background:#38a169; color:white; border:none; border-radius:8px; margin-bottom:8px;" onclick="record()">📌 紀錄點位</button>
-        <button style="width:100%; padding:12px; background:#3182ce; color:white; border:none; border-radius:8px; margin-bottom:8px;" onclick="startPlayProcess()">▶ 播放動畫</button>
-        <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:10px 0;">
-        <button style="width:100%; padding:12px; background:#4a5568; color:white; border:none; border-radius:8px;" onclick="resetItems()">🔄 重置球員</button>
-        <button style="width:100%; padding:12px; background:#e53e3e; color:white; border:none; border-radius:8px; margin-top:8px;" onclick="clearFrames()">🗑️ 清空紀錄</button>
+        <button class="panel-btn btn-green" onclick="record()">📌 紀錄點位</button>
+        <button class="panel-btn btn-blue" onclick="startPlayProcess()">▶ 播放動畫</button>
+        <button class="panel-btn btn-purple" onclick="saveTacticToStorage()">💾 儲存戰術</button>
+        <hr style="border:0; border-top:1px solid var(--border); margin: 5px 0;">
+        <button class="panel-btn btn-gray" onclick="resetItems()">🔄 重置球員</button>
+        <button class="panel-btn btn-red" onclick="clearFrames()">🗑️ 清空紀錄</button>
+        <button id="fullBtn" class="panel-btn btn-gray" style="margin-top: auto;" onclick="toggleFull()">📺 全螢幕切換</button>
     </div>
 
     <canvas id="court"></canvas>
@@ -97,98 +109,74 @@
     let isPlaying = false, isPaused = false, stopRequested = false;
     let currentFrameIdx = 0, currentT = 0;
 
-    // --- 語音功能修正區 ---
-    let recognition = null;
-    let isListening = false;
-
-    function initVoice() {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) {
-            document.getElementById('v-output').value = "您的瀏覽器不支援語音辨識";
-            return;
-        }
-
-        recognition = new SpeechRecognition();
-        recognition.lang = 'zh-TW';
-        recognition.continuous = true;
-        recognition.interimResults = true;
-
-        recognition.onstart = () => {
-            isListening = true;
-            updateVoiceUI(true);
-        };
-
-        recognition.onresult = (event) => {
-            let transcript = "";
-            for (let i = event.resultIndex; i < event.results.length; i++) {
-                transcript += event.results[i][0].transcript;
-            }
-            document.getElementById('v-output').value = transcript;
-        };
-
-        recognition.onerror = (event) => {
-            console.error("語音錯誤:", event.error);
-            if (event.error === 'not-allowed') {
-                alert("請允許麥克風權限以使用語音功能");
-                isListening = false;
-                updateVoiceUI(false);
-            }
-        };
-
-        recognition.onend = () => {
-            // 如果是在開啟狀態下自動停止（例如長久沉默），則自動重啟
-            if (isListening) recognition.start();
-        };
-    }
-
-    function toggleVoice() {
-        if (!recognition) initVoice();
-        if (!recognition) return;
-
-        if (!isListening) {
-            try {
-                recognition.start();
-            } catch (e) { console.error(e); }
+    // --- 全螢幕與 UI 邏輯 ---
+    function toggleFull() {
+        const stage = document.getElementById('mainStage');
+        if (!document.fullscreenElement && !stage.classList.contains('ios-full-mode')) {
+            if (stage.requestFullscreen) stage.requestFullscreen();
+            else if (stage.webkitRequestFullscreen) stage.webkitRequestFullscreen();
+            else stage.classList.add('ios-full-mode');
         } else {
-            isListening = false;
-            recognition.stop();
-            updateVoiceUI(false);
+            if (document.exitFullscreen) document.exitFullscreen();
+            else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+            else stage.classList.remove('ios-full-mode');
         }
+        setTimeout(resize, 150);
     }
 
-    function updateVoiceUI(active) {
-        const btn = document.getElementById('v-toggle');
-        if (active) {
-            btn.innerText = "🛑 停止辨識";
-            btn.classList.add('active');
-        } else {
-            btn.innerText = "🎤 開始說話";
-            btn.classList.remove('active');
-        }
+    function toggleSidebar(dir) {
+        const id = dir === 'L' ? 'sidebarL' : 'sidebarR';
+        document.getElementById(id).classList.toggle('active');
     }
 
-    // --- 動畫與介面邏輯 (承襲前版本優化) ---
+    // --- 儲存與讀取邏輯 ---
+    const STORAGE_KEY = 'bboard_pro_final_v4';
+    function getTactics() { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+    function updateListUI() {
+        const list = document.getElementById('tacticList');
+        const data = getTactics();
+        list.innerHTML = Object.keys(data).length ? '' : '<div style="color:#555; text-align:center;">尚未儲存</div>';
+        Object.keys(data).forEach(name => {
+            const div = document.createElement('div');
+            div.className = 'tactic-item';
+            div.innerHTML = `<span>${name}</span><span style="color:#e53e3e">✕</span>`;
+            div.onclick = (e) => { if(e.target.innerText === '✕') deleteTactic(name); else loadTactic(name); };
+            list.appendChild(div);
+        });
+    }
+    function saveTacticToStorage() {
+        if(frames.length < 2) return alert("請先紀錄點位");
+        const name = prompt('戰術名稱：', '戰術' + Date.now().toString().slice(-4));
+        if(!name) return;
+        const tactics = getTactics();
+        tactics[name] = { frames };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(tactics));
+        updateListUI();
+    }
+    function loadTactic(name) {
+        const tactics = getTactics(); frames = tactics[name].frames;
+        items = frames[0].map(i => ({...i}));
+        items.forEach(it => { if(it.type==='player') it.img = playerImages.find(p => p && p.src.includes(it.imgSrc)); });
+        document.getElementById('saveCount').innerText = frames.length;
+        render(); toggleSidebar('L');
+    }
+    function deleteTactic(name) { if(confirm('刪除戰術？')) { const d = getTactics(); delete d[name]; localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); updateListUI(); } }
+
+    // --- 動畫播放邏輯 ---
     function startPlayProcess() {
-        if(frames.length < 2) return alert("請紀錄至少兩組點位");
+        if(frames.length < 2) return alert("請先紀錄點位");
         document.getElementById('sidebarR').classList.remove('active');
         document.getElementById('playUI').classList.add('active');
         currentFrameIdx = 0; currentT = 0; stopRequested = false;
         resumeAnim();
     }
-
     function pauseAnim() { isPaused = true; isPlaying = false; }
     function stopAnim() { 
         stopRequested = true; isPlaying = false; isPaused = false; 
         document.getElementById('playUI').classList.remove('active');
         render(); 
     }
-
-    function resumeAnim() {
-        if(isPlaying) return;
-        isPlaying = true; isPaused = false;
-        requestAnimationFrame(animLoop);
-    }
-
+    function resumeAnim() { if(isPlaying) return; isPlaying = true; isPaused = false; requestAnimationFrame(animLoop); }
     function animLoop() {
         if(!isPlaying || stopRequested) return;
         render(currentT, frames[currentFrameIdx], frames[currentFrameIdx + 1]);
@@ -198,6 +186,7 @@
         requestAnimationFrame(animLoop);
     }
 
+    // --- 繪圖與拖曳 ---
     function render(t=null, sF=null, eF=null) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         if(courtImage) ctx.drawImage(courtImage, 0, 0, canvas.width, canvas.height);
@@ -222,7 +211,6 @@
         });
     }
 
-    // --- 初始化 ---
     async function init() {
         courtImage = await new Promise(res => {
             const img = new Image(); img.crossOrigin = "anonymous";
@@ -238,9 +226,9 @@
         resetItems();
         initDrag();
         initDraggableVoice();
+        updateListUI();
         window.addEventListener('resize', resize);
         resize();
-        initVoice(); // 預初始化語音
     }
 
     function initDrag() {
@@ -287,6 +275,21 @@
         window.addEventListener('touchend', () => active = false);
     }
 
+    // --- 語音系統 ---
+    let recognition = null, isListening = false;
+    function initVoice() {
+        const S = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!S) return;
+        recognition = new S(); recognition.lang = 'zh-TW'; recognition.continuous = true; recognition.interimResults = true;
+        recognition.onstart = () => { isListening = true; document.getElementById('v-toggle').innerText = "🛑 停止辨識"; document.getElementById('v-toggle').classList.add('active'); };
+        recognition.onresult = (e) => { let r = ""; for (let i = e.resultIndex; i < e.results.length; i++) r += e.results[i][0].transcript; document.getElementById('v-output').value = r; };
+        recognition.onend = () => { if (isListening) recognition.start(); };
+    }
+    function toggleVoice() {
+        if (!recognition) initVoice();
+        if (!isListening) { recognition.start(); } else { isListening = false; recognition.stop(); document.getElementById('v-toggle').innerText = "🎤 開始說話"; document.getElementById('v-toggle').classList.remove('active'); }
+    }
+
     function resize() {
         const stage = document.getElementById('mainStage').getBoundingClientRect();
         const ratio = BASE_W / BASE_H;
@@ -295,24 +298,9 @@
         canvas.width = w; canvas.height = h;
         render();
     }
-
     function record() { frames.push(items.map(i => ({...i, imgSrc: i.img ? i.img.src.split('/').pop() : ''}))); document.getElementById('saveCount').innerText = frames.length; }
     function resetItems() { items = playerImages.filter(m => m).map((img, i) => ({ x: 80 + i * 75, y: 100, img, type: 'player' })); items.push({ x: 500, y: 286, type: 'ball' }); render(); }
     function clearFrames() { frames = []; document.getElementById('saveCount').innerText = "0"; }
-    function toggleSidebar(dir) { document.getElementById(dir === 'L' ? 'sidebarL' : 'sidebarR').classList.toggle('active'); }
-    function toggleFull() {
-        const stage = document.getElementById('mainStage');
-        if (!document.fullscreenElement && !stage.classList.contains('ios-full-mode')) {
-            if (stage.requestFullscreen) stage.requestFullscreen();
-            else if (stage.webkitRequestFullscreen) stage.webkitRequestFullscreen();
-            else stage.classList.add('ios-full-mode');
-        } else {
-            if (document.exitFullscreen) document.exitFullscreen();
-            else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-            else stage.classList.remove('ios-full-mode');
-        }
-        setTimeout(resize, 150);
-    }
 
     init();
 </script>
