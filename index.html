@@ -3,21 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>籃球戰術平台 Pro - 線條修復最終版</title>
+    <title>籃球戰術平台 Pro - 語音介面優化版</title>
     <style>
         body { margin: 0; padding: 0; background-color: #1a202c; overflow: hidden; height: 100vh; display: flex; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto; }
         .status-bar { height: 40px; background: #2d3748; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; z-index: 10; }
+        
+        /* 畫布區域 */
         .canvas-container { flex: 1; display: flex; justify-content: center; align-items: center; position: relative; overflow: hidden; background: #1a202c; }
         canvas { background-color: #f39c12; box-shadow: 0 10px 30px rgba(0,0,0,0.5); cursor: grab; touch-action: none; border: 2px solid #4a5568; }
-        .overlay-ui { position: absolute; bottom: 20px; width: 100%; display: flex; flex-direction: column; align-items: center; pointer-events: none; gap: 10px; }
-        .btn-group { pointer-events: auto; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); padding: 12px 24px; border-radius: 30px; display: flex; gap: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
-        button { border: none; border-radius: 20px; color: white; font-weight: bold; cursor: pointer; padding: 10px 18px; font-size: 14px; transition: 0.2s; }
+
+        /* UI 層疊 */
+        .overlay-ui { position: absolute; bottom: 20px; width: 100%; display: flex; flex-direction: column; align-items: center; pointer-events: none; gap: 12px; }
+        
+        /* 1. 語音輸入欄位 (現在移到上方) */
+        .voice-wrap { pointer-events: auto; width: 500px; max-width: 90%; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); padding: 12px; border-radius: 15px; display: flex; gap: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        input { flex: 1; background: #2d3748; border: 1px solid #4a5568; color: #63b3ed; padding: 10px 15px; border-radius: 8px; outline: none; font-size: 14px; }
+
+        /* 2. 按鈕群組 (現在移到下方) */
+        .btn-group { pointer-events: auto; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); padding: 12px 24px; border-radius: 30px; display: flex; gap: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        button { border: none; border-radius: 20px; color: white; font-weight: bold; cursor: pointer; padding: 10px 18px; font-size: 14px; transition: 0.2s; white-space: nowrap; }
         .btn-rec { background: #d69e2e; } .btn-play { background: #38a169; } .btn-reset { background: #e53e3e; } .btn-blue { background: #3182ce; }
-        .sidebar { position: fixed; left: -260px; top: 0; width: 260px; height: 100%; background: #2d3748; z-index: 1001; transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); border-right: 2px solid #4a5568; color: white; padding: 25px; box-sizing: border-box; }
+        button:active { transform: scale(0.95); opacity: 0.8; }
+
+        /* 側邊欄 */
+        .sidebar { position: fixed; left: -260px; top: 0; width: 260px; height: 100%; background: #2d3748; z-index: 1001; transition: 0.4s; border-right: 2px solid #4a5568; color: white; padding: 25px; box-sizing: border-box; }
         .sidebar.active { left: 0; }
         .sidebar-toggle { position: absolute; right: -42px; top: 100px; width: 42px; height: 100px; background: #3182ce; border-radius: 0 10px 10px 0; writing-mode: vertical-lr; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 13px; font-weight: bold; }
-        .voice-wrap { pointer-events: auto; width: 500px; background: rgba(0,0,0,0.8); padding: 10px; border-radius: 15px; display: flex; gap: 8px; }
-        input { flex: 1; background: #2d3748; border: 1px solid #4a5568; color: #63b3ed; padding: 8px 15px; border-radius: 8px; outline: none; }
     </style>
 </head>
 <body>
@@ -28,22 +39,23 @@
     <div class="sidebar-toggle" onclick="document.getElementById('sidebar').classList.toggle('active')">戰術清單 ◀</div>
     <h3 style="margin-top:0">📁 戰術清單</h3>
     <hr style="border: 0; border-top: 1px solid #4a5568; margin: 15px 0;">
-    <div id="save-list" style="font-size:14px; color:#a0aec0; text-align:center; padding:20px;">尚無存檔內容...</div>
+    <div id="save-list" style="font-size:14px; color:#a0aec0; text-align:center;">尚無內容</div>
 </div>
 
 <div class="canvas-container" id="wrap">
     <canvas id="courtCanvas"></canvas>
     <div class="overlay-ui">
+        <div class="voice-wrap">
+            <button class="btn-blue" id="v-btn" onclick="startVoice()">🎤 語音辨識</button>
+            <input type="text" id="v-res" placeholder="辨識結果將顯示於此 (僅限 Chrome/Safari)..." readonly>
+            <button class="btn-reset" style="padding: 8px 12px;" onclick="document.getElementById('v-res').value=''">清空</button>
+        </div>
+
         <div class="btn-group">
             <button class="btn-rec" onclick="record()">📌 紀錄點位</button>
             <button class="btn-play" onclick="play()">▶️ 播放動畫</button>
-            <button class="btn-reset" onclick="resetAll()">🔄 重置歸零</button>
+            <button class="btn-reset" onclick="resetAll()">🔄 全部重置</button>
             <button class="btn-blue" onclick="toggleFull()">📺 全螢幕</button>
-        </div>
-        <div class="voice-wrap">
-            <button class="btn-blue" id="v-btn" onclick="startVoice()">🎤 語音輸入</button>
-            <input type="text" id="v-res" placeholder="辨識結果將顯示於此..." readonly>
-            <button class="btn-reset" style="padding: 8px 12px;" onclick="document.getElementById('v-res').value=''">清空</button>
         </div>
     </div>
 </div>
@@ -55,53 +67,24 @@
     const BASE_W = 1200, BASE_H = 750;
     let items = [], images = [], frames = [], dragTarget = null;
 
-    // --- 核心修復：強制重繪球場標線 ---
+    // --- 繪製邏輯 ---
     function drawCourt(s) {
-        if (s <= 0) return;
         ctx.save();
-        ctx.strokeStyle = "white"; 
-        ctx.lineWidth = 3 * s;
-        ctx.lineCap = "round";
-
-        const p = 40 * s; 
-        const cw = canvas.width - p * 2, ch = canvas.height - p * 2;
-        const cx = canvas.width / 2, cy = canvas.height / 2;
-
-        // 1. 外部邊框與中線
+        ctx.strokeStyle = "white"; ctx.lineWidth = 3 * s; ctx.lineCap = "round";
+        const p = 40 * s, cw = canvas.width - p * 2, ch = canvas.height - p * 2, cx = canvas.width / 2, cy = canvas.height / 2;
         ctx.strokeRect(p, p, cw, ch);
         ctx.beginPath(); ctx.moveTo(cx, p); ctx.lineTo(cx, p + ch); ctx.stroke();
         ctx.beginPath(); ctx.arc(cx, cy, 75 * s, 0, Math.PI * 2); ctx.stroke();
-
-        // 2. 兩側禁區與三分線 (精確對稱修復)
         [1, -1].forEach(side => {
-            const startX = side === 1 ? p : p + cw;
-            const basketX = side === 1 ? p + (60 * s) : p + cw - (60 * s);
-            const dir = side === 1 ? 1 : -1;
-            
-            // 禁區 (FIBA 標準比例)
+            const startX = side === 1 ? p : p + cw, basketX = side === 1 ? p + (60 * s) : p + cw - (60 * s), dir = side === 1 ? 1 : -1;
             const lw = 240 * s, lh = 200 * s;
             ctx.strokeRect(side === 1 ? p : p + cw - lw, cy - lh/2, lw, lh);
-
-            // 三分線邏輯修正：直線 + 圓弧
-            const threeR = 280 * s; // 三分線半徑
-            const straightY = 40 * s; // 離邊線距離
-            
+            const threeR = 280 * s, straightY = 40 * s;
             ctx.beginPath();
-            if (side === 1) {
-                ctx.moveTo(p, p + straightY);
-                ctx.arc(basketX, cy, threeR, -1.25, 1.25, false);
-                ctx.lineTo(p, p + ch - straightY);
-            } else {
-                ctx.moveTo(p + cw, p + straightY);
-                ctx.arc(basketX, cy, threeR, Math.PI + 1.25, Math.PI - 1.25, true);
-                ctx.lineTo(p + cw, p + ch - straightY);
-            }
+            if (side === 1) { ctx.moveTo(p, p + straightY); ctx.arc(basketX, cy, threeR, -1.25, 1.25, false); ctx.lineTo(p, p + ch - straightY); }
+            else { ctx.moveTo(p + cw, p + straightY); ctx.arc(basketX, cy, threeR, Math.PI + 1.25, Math.PI - 1.25, true); ctx.lineTo(p + cw, p + ch - straightY); }
             ctx.stroke();
-
-            // 罰球圈
-            ctx.beginPath();
-            ctx.arc(p + dir * lw, cy, 75 * s, -Math.PI/2, Math.PI/2, side !== 1);
-            ctx.stroke();
+            ctx.beginPath(); ctx.arc(p + dir * lw, cy, 75 * s, -Math.PI/2, Math.PI/2, side !== 1); ctx.stroke();
         });
         ctx.restore();
     }
@@ -109,30 +92,69 @@
     function render(t=null, sF=null, eF=null) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         const s = canvas.width / BASE_W;
-        drawCourt(s); // 確保線條優先繪製
-
+        drawCourt(s);
         const data = t !== null ? sF.map((it, i) => ({ 
-            x: it.x + (eF[i].x - it.x) * t, 
-            y: it.y + (eF[i].y - it.y) * t, 
-            img: it.img, type: it.type 
+            x: it.x + (eF[i].x - it.x) * t, y: it.y + (eF[i].y - it.y) * t, img: it.img, type: it.type 
         })) : items;
-
         data.forEach(p => {
             const r = (p.type==='ball' ? 20 : 40) * s;
-            ctx.save();
-            ctx.beginPath(); ctx.arc(p.x * s, p.y * s, r, 0, Math.PI*2);
+            ctx.save(); ctx.beginPath(); ctx.arc(p.x * s, p.y * s, r, 0, Math.PI*2);
             if(p.type==='ball'){ ctx.fillStyle="#ff4500"; ctx.fill(); }
             else { 
                 ctx.fillStyle="white"; ctx.fill(); ctx.clip(); 
                 if(p.img) ctx.drawImage(p.img, p.x*s-r, p.y*s-r, r*2, r*2); 
             }
-            ctx.strokeStyle="white"; ctx.lineWidth=2*s; ctx.stroke();
-            ctx.restore();
+            ctx.strokeStyle="white"; ctx.lineWidth=2*s; ctx.stroke(); ctx.restore();
         });
     }
 
+    // --- 語音功能修復與優化 ---
+    function startVoice() {
+        const inputField = document.getElementById('v-res');
+        const btn = document.getElementById('v-btn');
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+        if (!SpeechRecognition) {
+            inputField.value = "❌ 瀏覽器不支援 Web Speech API";
+            return;
+        }
+
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'zh-TW';
+        recognition.interimResults = false;
+
+        recognition.onstart = () => {
+            btn.innerText = "🔴 聆聽中...";
+            inputField.value = "正在嘗試獲取麥克風權限...";
+        };
+
+        recognition.onresult = (event) => {
+            const text = event.results[0][0].transcript;
+            inputField.value = text;
+        };
+
+        recognition.onerror = (event) => {
+            btn.innerText = "🎤 語音辨識";
+            switch(event.error) {
+                case 'not-allowed': inputField.value = "❌ 錯誤：請允許麥克風權限"; break;
+                case 'network': inputField.value = "❌ 錯誤：請檢查網路連線"; break;
+                default: inputField.value = "❌ 辨識失敗：" + event.error;
+            }
+        };
+
+        recognition.onend = () => {
+            btn.innerText = "🎤 語音辨識";
+        };
+
+        try {
+            recognition.start();
+        } catch (e) {
+            inputField.value = "❌ 系統繁忙，請稍後再試";
+        }
+    }
+
     function resize() {
-        const w = wrap.clientWidth - 40, h = wrap.clientHeight - 80;
+        const w = wrap.clientWidth - 40, h = wrap.clientHeight - 100;
         const ratio = Math.min(w / BASE_W, h / BASE_H);
         canvas.width = BASE_W * ratio; canvas.height = BASE_H * ratio;
         render();
@@ -165,13 +187,11 @@
             const s = canvas.width / BASE_W;
             return { x: (cx - r.left) / s, y: (cy - r.top) / s };
         };
-        const start = (e) => { const p = getP(e); dragTarget = items.findLast(i => Math.hypot(i.x - p.x, i.y - p.y) < 50); };
-        const move = (e) => { if(!dragTarget) return; const p = getP(e); dragTarget.x = p.x; dragTarget.y = p.y; render(); };
-        canvas.addEventListener('mousedown', start);
-        window.addEventListener('mousemove', move);
+        canvas.addEventListener('mousedown', (e) => { const p = getP(e); dragTarget = items.findLast(i => Math.hypot(i.x - p.x, i.y - p.y) < 50); });
+        window.addEventListener('mousemove', (e) => { if(!dragTarget) return; const p = getP(e); dragTarget.x = p.x; dragTarget.y = p.y; render(); });
         window.addEventListener('mouseup', () => dragTarget = null);
-        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); start(e); }, {passive: false});
-        window.addEventListener('touchmove', (e) => { if(dragTarget) e.preventDefault(); move(e); }, {passive: false});
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); const p = getP(e); dragTarget = items.findLast(i => Math.hypot(i.x - p.x, i.y - p.y) < 50); }, {passive: false});
+        window.addEventListener('touchmove', (e) => { if(!dragTarget) return; e.preventDefault(); const p = getP(e); dragTarget.x = p.x; dragTarget.y = p.y; render(); }, {passive: false});
     }
 
     function record() { frames.push(items.map(i => ({...i}))); document.getElementById('step-info').innerText = `已紀錄：${frames.length} 點位`; }
@@ -184,17 +204,8 @@
             }
         }
     }
-    function resetAll() { frames = []; document.getElementById('step-info').innerText = "狀態：已重置"; resetPlayers(); }
+    function resetAll() { frames = []; document.getElementById('step-info').innerText = "已清空紀錄"; resetPlayers(); }
     function toggleFull() { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); }
-    function startVoice() {
-        const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!Speech) return alert("瀏覽器不支援語音功能");
-        const rec = new Speech(); rec.lang = 'zh-TW';
-        rec.onstart = () => document.getElementById('v-btn').innerText = "🔴 聆聽中...";
-        rec.onresult = (e) => document.getElementById('v-res').value = e.results[0][0].transcript;
-        rec.onend = () => document.getElementById('v-btn').innerText = "🎤 語音輸入";
-        rec.start();
-    }
 
     init();
 </script>
