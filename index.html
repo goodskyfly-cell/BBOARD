@@ -3,222 +3,198 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>籃球戰術平台 Pro - 最終精確版</title>
+    <title>籃球戰術平台 Pro - 線條修復最終版</title>
     <style>
-        body { margin: 0; padding: 0; background-color: #1a202c; font-family: sans-serif; height: 100vh; overflow: hidden; color: white; }
-        
-        /* 側邊戰術庫 - 隱藏抽屜 */
-        .sidebar { 
-            position: fixed; left: -280px; top: 0; width: 280px; height: 100%; 
-            background: #2d3748; z-index: 3000; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
-            display: flex; flex-direction: column; padding: 20px; box-sizing: border-box;
-            border-right: 3px solid #4a5568; box-shadow: 10px 0 15px rgba(0,0,0,0.3);
-        }
+        body { margin: 0; padding: 0; background-color: #1a202c; overflow: hidden; height: 100vh; display: flex; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto; }
+        .status-bar { height: 40px; background: #2d3748; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; z-index: 10; }
+        .canvas-container { flex: 1; display: flex; justify-content: center; align-items: center; position: relative; overflow: hidden; background: #1a202c; }
+        canvas { background-color: #f39c12; box-shadow: 0 10px 30px rgba(0,0,0,0.5); cursor: grab; touch-action: none; border: 2px solid #4a5568; }
+        .overlay-ui { position: absolute; bottom: 20px; width: 100%; display: flex; flex-direction: column; align-items: center; pointer-events: none; gap: 10px; }
+        .btn-group { pointer-events: auto; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); padding: 12px 24px; border-radius: 30px; display: flex; gap: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        button { border: none; border-radius: 20px; color: white; font-weight: bold; cursor: pointer; padding: 10px 18px; font-size: 14px; transition: 0.2s; }
+        .btn-rec { background: #d69e2e; } .btn-play { background: #38a169; } .btn-reset { background: #e53e3e; } .btn-blue { background: #3182ce; }
+        .sidebar { position: fixed; left: -260px; top: 0; width: 260px; height: 100%; background: #2d3748; z-index: 1001; transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); border-right: 2px solid #4a5568; color: white; padding: 25px; box-sizing: border-box; }
         .sidebar.active { left: 0; }
-        .sidebar-toggle { 
-            position: fixed; left: 15px; top: 15px; z-index: 3100; 
-            background: rgba(49, 130, 206, 0.9); border: none; color: white; 
-            padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold;
-        }
-
-        /* 畫布區域極大化 */
-        .main-content { width: 100vw; height: 100vh; display: flex; flex-direction: column; position: relative; }
-        .canvas-area { flex: 1; display: flex; justify-content: center; align-items: center; background: #1a202c; padding: 5px; }
-        canvas { background-color: #f39c12; cursor: grab; touch-action: none; border-radius: 4px; }
-
-        /* 底部語音框 - 常駐於最下方 */
-        .voice-bar { 
-            background: #2d3748; height: 60px; display: flex; justify-content: center; 
-            align-items: center; border-top: 1px solid #4a5568; z-index: 1000;
-        }
-        .voice-input-display { width: 90%; background: #1a202c; padding: 10px 20px; border-radius: 30px; color: #718096; }
-
-        /* 隱藏的功能按鈕區 - 位於語音框上方，懸浮隱藏 */
-        .hidden-controls { 
-            position: absolute; bottom: 70px; left: 50%; transform: translateX(-50%);
-            display: flex; gap: 10px; background: rgba(0,0,0,0.7); padding: 10px 20px; 
-            border-radius: 15px; z-index: 2000; opacity: 0; transition: 0.3s; pointer-events: none;
-        }
-        /* 當滑鼠靠近底部或語音框時顯示按鈕 */
-        .main-content:hover .hidden-controls, .hidden-controls:hover { opacity: 1; pointer-events: auto; }
-
-        button { border: none; border-radius: 6px; color: white; font-weight: bold; cursor: pointer; padding: 10px 18px; }
-        .btn-orange { background: #d69e2e; }
-        .btn-green { background: #38a169; }
-        .btn-red { background: #e53e3e; }
-        .btn-blue { background: #3182ce; }
-        .btn-gray { background: #4a5568; }
+        .sidebar-toggle { position: absolute; right: -42px; top: 100px; width: 42px; height: 100px; background: #3182ce; border-radius: 0 10px 10px 0; writing-mode: vertical-lr; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 13px; font-weight: bold; }
+        .voice-wrap { pointer-events: auto; width: 500px; background: rgba(0,0,0,0.8); padding: 10px; border-radius: 15px; display: flex; gap: 8px; }
+        input { flex: 1; background: #2d3748; border: 1px solid #4a5568; color: #63b3ed; padding: 8px 15px; border-radius: 8px; outline: none; }
     </style>
 </head>
 <body>
 
-<button class="sidebar-toggle" onclick="document.getElementById('sidebar').classList.toggle('active')">☰ 戰術選單</button>
+<div class="status-bar">🏀 籃球戰術平台 Pro | <span id="step-info" style="color:#f6e05e; margin-left:5px;">狀態：準備就緒</span></div>
 
 <div class="sidebar" id="sidebar">
-    <h3 style="margin-top: 50px;">📁 戰術儲存庫</h3>
-    <div style="flex:1; background:#1a202c; border-radius:8px; margin-bottom:15px; padding:10px; border:1px solid #4a5568;">
-        <p style="text-align:center; color:#718096; margin-top:20px;">尚無戰術紀錄</p>
-    </div>
-    <button class="btn-blue" style="width:100%; padding:15px;">💾 儲存戰術 (Save)</button>
+    <div class="sidebar-toggle" onclick="document.getElementById('sidebar').classList.toggle('active')">戰術清單 ◀</div>
+    <h3 style="margin-top:0">📁 戰術清單</h3>
+    <hr style="border: 0; border-top: 1px solid #4a5568; margin: 15px 0;">
+    <div id="save-list" style="font-size:14px; color:#a0aec0; text-align:center; padding:20px;">尚無存檔內容...</div>
 </div>
 
-<div class="main-content">
-    <div class="canvas-area" id="canvas-wrap">
-        <canvas id="courtCanvas"></canvas>
-    </div>
-
-    <div class="hidden-controls">
-        <button class="btn-orange" id="mark-btn">📌 紀錄點位</button>
-        <button class="btn-green" id="play-btn">▶️ 播放動畫</button>
-        <button class="btn-red" id="stop-btn">⏹️ 停止</button>
-        <button class="btn-gray" id="reset-btn">🔄 重置位置</button>
-        <button class="btn-blue" id="full-btn">📺 全螢幕</button>
-    </div>
-
-    <div class="voice-bar">
-        <div class="voice-input-display">🎤 正在聆聽指令... (繁體中文)</div>
+<div class="canvas-container" id="wrap">
+    <canvas id="courtCanvas"></canvas>
+    <div class="overlay-ui">
+        <div class="btn-group">
+            <button class="btn-rec" onclick="record()">📌 紀錄點位</button>
+            <button class="btn-play" onclick="play()">▶️ 播放動畫</button>
+            <button class="btn-reset" onclick="resetAll()">🔄 重置歸零</button>
+            <button class="btn-blue" onclick="toggleFull()">📺 全螢幕</button>
+        </div>
+        <div class="voice-wrap">
+            <button class="btn-blue" id="v-btn" onclick="startVoice()">🎤 語音輸入</button>
+            <input type="text" id="v-res" placeholder="辨識結果將顯示於此..." readonly>
+            <button class="btn-reset" style="padding: 8px 12px;" onclick="document.getElementById('v-res').value=''">清空</button>
+        </div>
     </div>
 </div>
 
 <script>
     const canvas = document.getElementById('courtCanvas');
     const ctx = canvas.getContext('2d');
-    const wrap = document.getElementById('canvas-wrap');
+    const wrap = document.getElementById('wrap');
+    const BASE_W = 1200, BASE_H = 750;
+    let items = [], images = [], frames = [], dragTarget = null;
 
-    // 標準畫布比例 (FIBA 規格參考)
-    const BASE_W = 940, BASE_H = 640;
-    let items = [], images = [], scaleRatio = 1, dragTarget = null;
-
-    const imgNames = ["01.png", "05.png", "06.png", "07.png", "08.png", "09.png", "10.png", "12.png", "13.png", "15.png", "23.png", "89.png"];
-    const imgUrls = imgNames.map(name => `https://raw.githubusercontent.com/goodskyfly-cell/newboard/main/${name}`);
-
-    async function init() {
-        images = await Promise.all(imgUrls.map(url => new Promise(res => {
-            const img = new Image(); img.crossOrigin = "anonymous"; img.src = url;
-            img.onload = () => res(img); img.onerror = () => res(null);
-        })));
-        resetPlayers();
-        window.addEventListener('resize', render);
-        render();
-    }
-
-    function resetPlayers() {
-        items = [];
-        // 將球員置於球場底部邊緣外
-        images.forEach((img, i) => { if(img) items.push({ x: 60 + i * 75, y: 610, img: img, type: 'player' }); });
-        items.push({ x: 470, y: 300, type: 'ball' });
-    }
-
-    // --- 關鍵修正：準確還原原始線條幾何 ---
-    function drawCourtLines(s) {
+    // --- 核心修復：強制重繪球場標線 ---
+    function drawCourt(s) {
+        if (s <= 0) return;
         ctx.save();
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
-        ctx.lineWidth = 2.5 * s;
+        ctx.strokeStyle = "white"; 
+        ctx.lineWidth = 3 * s;
         ctx.lineCap = "round";
 
-        const pad = 20 * s;
-        const cw = 900 * s;  // 球場內寬
-        const ch = 560 * s;  // 球場內高
-        const midX = 470 * s;
-        const midY = 300 * s;
+        const p = 40 * s; 
+        const cw = canvas.width - p * 2, ch = canvas.height - p * 2;
+        const cx = canvas.width / 2, cy = canvas.height / 2;
 
-        // 1. 球場大框
-        ctx.strokeRect(pad, pad, cw, ch);
+        // 1. 外部邊框與中線
+        ctx.strokeRect(p, p, cw, ch);
+        ctx.beginPath(); ctx.moveTo(cx, p); ctx.lineTo(cx, p + ch); ctx.stroke();
+        ctx.beginPath(); ctx.arc(cx, cy, 75 * s, 0, Math.PI * 2); ctx.stroke();
 
-        // 2. 中線與中圈
-        ctx.beginPath();
-        ctx.moveTo(midX, pad);
-        ctx.lineTo(midX, pad + ch);
-        ctx.stroke();
-        
-        ctx.beginPath();
-        ctx.arc(midX, midY, 60 * s, 0, Math.PI * 2);
-        ctx.stroke();
+        // 2. 兩側禁區與三分線 (精確對稱修復)
+        [1, -1].forEach(side => {
+            const startX = side === 1 ? p : p + cw;
+            const basketX = side === 1 ? p + (60 * s) : p + cw - (60 * s);
+            const dir = side === 1 ? 1 : -1;
+            
+            // 禁區 (FIBA 標準比例)
+            const lw = 240 * s, lh = 200 * s;
+            ctx.strokeRect(side === 1 ? p : p + cw - lw, cy - lh/2, lw, lh);
 
-        // 3. 禁區與三分線 (左右鏡射)
-        [true, false].forEach(isLeft => {
-            const sideX = isLeft ? pad : pad + cw;
-            const dir = isLeft ? 1 : -1;
-
-            // 禁區 (192 x 220 比例)
-            const keyW = 190 * s;
-            const keyH = 220 * s;
-            ctx.strokeRect(isLeft ? pad : pad + cw - keyW, midY - (keyH / 2), keyW, keyH);
-
-            // 三分線弧度 (恢復 238px 精確半徑)
+            // 三分線邏輯修正：直線 + 圓弧
+            const threeR = 280 * s; // 三分線半徑
+            const straightY = 40 * s; // 離邊線距離
+            
             ctx.beginPath();
-            // 起始於底線平行處
-            ctx.moveTo(sideX, midY - 238 * s);
-            ctx.arc(sideX + dir * 60 * s, midY, 238 * s, (isLeft ? -1.25 : 1.9), (isLeft ? 1.25 : 4.38));
+            if (side === 1) {
+                ctx.moveTo(p, p + straightY);
+                ctx.arc(basketX, cy, threeR, -1.25, 1.25, false);
+                ctx.lineTo(p, p + ch - straightY);
+            } else {
+                ctx.moveTo(p + cw, p + straightY);
+                ctx.arc(basketX, cy, threeR, Math.PI + 1.25, Math.PI - 1.25, true);
+                ctx.lineTo(p + cw, p + ch - straightY);
+            }
             ctx.stroke();
 
-            // 籃下圓圈 (參考點)
+            // 罰球圈
             ctx.beginPath();
-            ctx.arc(sideX + dir * 55 * s, midY, 12 * s, 0, Math.PI * 2);
+            ctx.arc(p + dir * lw, cy, 75 * s, -Math.PI/2, Math.PI/2, side !== 1);
             ctx.stroke();
         });
         ctx.restore();
     }
 
-    function render() {
-        // 確保畫布在目前視窗內最大化
-        const winW = wrap.clientWidth - 10;
-        const winH = wrap.clientHeight - 10;
-        scaleRatio = Math.min(winW / BASE_W, winH / BASE_H);
-        
-        canvas.width = BASE_W * scaleRatio;
-        canvas.height = BASE_H * scaleRatio;
+    function render(t=null, sF=null, eF=null) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const s = canvas.width / BASE_W;
+        drawCourt(s); // 確保線條優先繪製
 
-        // 背景
-        ctx.fillStyle = "#f39c12";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        const data = t !== null ? sF.map((it, i) => ({ 
+            x: it.x + (eF[i].x - it.x) * t, 
+            y: it.y + (eF[i].y - it.y) * t, 
+            img: it.img, type: it.type 
+        })) : items;
 
-        drawCourtLines(scaleRatio);
-
-        // 繪製球員
-        const radius = 25 * scaleRatio;
-        items.forEach(p => {
-            const dx = p.x * scaleRatio, dy = p.y * scaleRatio;
+        data.forEach(p => {
+            const r = (p.type==='ball' ? 20 : 40) * s;
             ctx.save();
-            if(p.type === 'ball') {
-                ctx.beginPath(); ctx.arc(dx, dy, radius * 0.6, 0, Math.PI * 2);
-                ctx.fillStyle = "#ff4500"; ctx.fill(); ctx.strokeStyle = "black"; ctx.stroke();
-            } else {
-                ctx.beginPath(); ctx.arc(dx, dy, radius, 0, Math.PI * 2);
-                ctx.fillStyle = "white"; ctx.fill(); ctx.clip();
-                if(p.img) ctx.drawImage(p.img, dx - radius, dy - radius, radius * 2, radius * 2);
-                ctx.restore();
-                ctx.beginPath(); ctx.arc(dx, dy, radius, 0, Math.PI * 2);
-                ctx.strokeStyle = "#333"; ctx.lineWidth = 2 * scaleRatio; ctx.stroke();
+            ctx.beginPath(); ctx.arc(p.x * s, p.y * s, r, 0, Math.PI*2);
+            if(p.type==='ball'){ ctx.fillStyle="#ff4500"; ctx.fill(); }
+            else { 
+                ctx.fillStyle="white"; ctx.fill(); ctx.clip(); 
+                if(p.img) ctx.drawImage(p.img, p.x*s-r, p.y*s-r, r*2, r*2); 
             }
+            ctx.strokeStyle="white"; ctx.lineWidth=2*s; ctx.stroke();
             ctx.restore();
         });
     }
 
-    // 交互邏輯
-    function getPos(e) {
-        const rect = canvas.getBoundingClientRect();
-        const ev = e.touches ? e.touches[0] : e;
-        return { x: (ev.clientX - rect.left) / scaleRatio, y: (ev.clientY - rect.top) / scaleRatio };
+    function resize() {
+        const w = wrap.clientWidth - 40, h = wrap.clientHeight - 80;
+        const ratio = Math.min(w / BASE_W, h / BASE_H);
+        canvas.width = BASE_W * ratio; canvas.height = BASE_H * ratio;
+        render();
     }
 
-    canvas.addEventListener('mousedown', e => {
-        const p = getPos(e);
-        dragTarget = items.findLast(i => Math.hypot(i.x - p.x, i.y - p.y) < 30);
-    });
-    window.addEventListener('mousemove', e => {
-        if(!dragTarget) return;
-        const p = getPos(e);
-        dragTarget.x = p.x; dragTarget.y = p.y;
-        render();
-    });
-    window.addEventListener('mouseup', () => dragTarget = null);
+    async function init() {
+        const names = ["01.png", "05.png", "06.png", "07.png", "08.png", "09.png", "10.png", "12.png", "13.png", "15.png", "23.png", "89.png"];
+        images = await Promise.all(names.map(n => new Promise(res => {
+            const img = new Image(); img.crossOrigin="anonymous";
+            img.src = `https://raw.githubusercontent.com/goodskyfly-cell/newboard/main/${n}`;
+            img.onload = () => res(img); img.onerror = () => res(null);
+        })));
+        resetPlayers();
+        window.addEventListener('resize', resize);
+        initInteraction();
+        resize();
+    }
 
-    document.getElementById('full-btn').onclick = () => {
-        if (!document.fullscreenElement) document.documentElement.requestFullscreen();
-        else document.exitFullscreen();
-    };
-    document.getElementById('reset-btn').onclick = () => { resetPlayers(); render(); };
+    function resetPlayers() {
+        items = images.filter(m => m).map((img, i) => ({ x: 80 + i * 90, y: 80, img, type: 'player' }));
+        items.push({ x: 600, y: 375, type: 'ball' });
+        render();
+    }
+
+    function initInteraction() {
+        const getP = (e) => {
+            const r = canvas.getBoundingClientRect();
+            const cx = e.touches ? e.touches[0].clientX : e.clientX;
+            const cy = e.touches ? e.touches[0].clientY : e.clientY;
+            const s = canvas.width / BASE_W;
+            return { x: (cx - r.left) / s, y: (cy - r.top) / s };
+        };
+        const start = (e) => { const p = getP(e); dragTarget = items.findLast(i => Math.hypot(i.x - p.x, i.y - p.y) < 50); };
+        const move = (e) => { if(!dragTarget) return; const p = getP(e); dragTarget.x = p.x; dragTarget.y = p.y; render(); };
+        canvas.addEventListener('mousedown', start);
+        window.addEventListener('mousemove', move);
+        window.addEventListener('mouseup', () => dragTarget = null);
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); start(e); }, {passive: false});
+        window.addEventListener('touchmove', (e) => { if(dragTarget) e.preventDefault(); move(e); }, {passive: false});
+    }
+
+    function record() { frames.push(items.map(i => ({...i}))); document.getElementById('step-info').innerText = `已紀錄：${frames.length} 點位`; }
+    async function play() {
+        if (frames.length < 2) return;
+        for (let i = 0; i < frames.length - 1; i++) {
+            for (let t = 0; t <= 1; t += 0.05) {
+                render(t, frames[i], frames[i+1]);
+                await new Promise(r => requestAnimationFrame(r));
+            }
+        }
+    }
+    function resetAll() { frames = []; document.getElementById('step-info').innerText = "狀態：已重置"; resetPlayers(); }
+    function toggleFull() { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); }
+    function startVoice() {
+        const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!Speech) return alert("瀏覽器不支援語音功能");
+        const rec = new Speech(); rec.lang = 'zh-TW';
+        rec.onstart = () => document.getElementById('v-btn').innerText = "🔴 聆聽中...";
+        rec.onresult = (e) => document.getElementById('v-res').value = e.results[0][0].transcript;
+        rec.onend = () => document.getElementById('v-btn').innerText = "🎤 語音輸入";
+        rec.start();
+    }
 
     init();
 </script>
