@@ -3,84 +3,96 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>籃球戰術平台 Pro - 穩定線條與自適應版</title>
+    <title>籃球戰術平台 Pro - 穩定恢復版</title>
     <style>
-        /* 全域佈局：防止滾動並強制滿版 */
+        /* 基礎佈局：確保不產生滾動條，按鈕區塊強制顯示 */
         body { 
             margin: 0; padding: 0; background-color: #1a202c; 
-            font-family: sans-serif; overflow: hidden; height: 100vh; 
-            display: flex; flex-direction: column; 
+            font-family: 'Microsoft JhengHei', sans-serif; 
+            display: flex; flex-direction: column; height: 100vh; overflow: hidden;
         }
 
+        /* 資訊列 */
         .header-info { 
-            color: #f6e05e; font-weight: bold; text-align: center; 
-            padding: 8px; font-size: 1rem; background: #2d3748;
+            background: #2d3748; color: #f6e05e; padding: 10px; 
+            font-weight: bold; text-align: center; font-size: 1.1rem;
+            flex-shrink: 0; /* 確保不被壓縮 */
         }
 
-        /* 畫布容器：自動填滿剩餘空間，確保不擠壓按鈕 */
-        .canvas-area {
+        /* 畫布區域：自適應縮放 */
+        .canvas-container {
             flex: 1; display: flex; align-items: center; justify-content: center;
-            width: 100%; overflow: hidden; position: relative;
+            background: #1a202c; overflow: hidden; position: relative;
         }
 
         canvas { 
-            background-color: #f39c12; border: 2px solid #5d3a1a; 
-            touch-action: none; cursor: crosshair; 
-            max-width: 98%; max-height: 95%; /* 確保畫布在容器內 */
+            background-color: #f39c12; border: 3px solid #5d3a1a; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            max-width: 98%; max-height: 95%; touch-action: none; 
         }
 
-        /* 底部按鈕區：強制固定在最下方 */
-        .controls-row { 
-            padding: 12px; display: flex; gap: 8px; flex-wrap: wrap; 
-            justify-content: center; background: #2d3748; width: 100%;
-            border-top: 1px solid #4a5568; z-index: 100;
+        /* 底部功能區塊：戰術庫與控制鈕 */
+        .controls-area {
+            background: #2d3748; padding: 10px; flex-shrink: 0; 
+            display: flex; flex-direction: column; gap: 8px;
+            border-top: 2px solid #4a5568; z-index: 100;
         }
+
+        .button-row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 
         button { 
-            padding: 10px 16px; border-radius: 8px; border: none; 
-            font-weight: bold; cursor: pointer; font-size: 0.9rem; 
-            transition: 0.2s; display: flex; align-items: center; gap: 4px;
+            padding: 10px 18px; border-radius: 8px; border: none; 
+            font-weight: bold; cursor: pointer; font-size: 1rem; 
+            transition: 0.2s; color: white;
         }
-        .btn-save { background: #d69e2e; color: white; }
-        .btn-play { background: #38a169; color: white; }
-        .btn-stop { background: #e53e3e; color: white; }
-        .btn-full { background: #4a5568; color: white; }
-        .btn-reset { background: #718096; color: white; }
-        button:active { transform: scale(0.95); }
+        .btn-step { background: #d69e2e; }   /* 儲存點位 */
+        .btn-play { background: #38a169; }   /* 播放 */
+        .btn-stop { background: #e53e3e; }   /* 停止 */
+        .btn-reset { background: #718096; }  /* 重置 */
+        .btn-full { background: #3182ce; }   /* 全螢幕 */
+
+        button:active { transform: scale(0.95); opacity: 0.9; }
+
+        /* 全螢幕樣式修正 */
+        canvas:fullscreen { width: 100vw; height: 100vh; max-width: 100vw; max-height: 100vh; border: none; }
     </style>
 </head>
 <body>
 
-<div class="header-info">已儲存點位：0/20</div>
+<div class="header-info" id="step-info">已儲存點位：0 / 20</div>
 
-<div class="canvas-area">
-    <canvas id="courtCanvas" width="900" height="660"></canvas>
+<div class="canvas-container">
+    <canvas id="courtCanvas" width="900" height="600"></canvas>
 </div>
 
-<div class="controls-row">
-    <button id="save-btn" class="btn-save">📌 儲存點位</button>
-    <button id="play-btn" class="btn-play">▶️ 播放動畫</button>
-    <button id="stop-btn" class="btn-stop">⏹️ 停止</button>
-    <button id="reset-btn" class="btn-reset">🔄 重置位置</button>
-    <button id="full-btn" class="btn-full">📺 全螢幕模式</button>
+<div class="controls-area">
+    <div class="button-row">
+        <button id="save-btn" class="btn-step">📌 儲存點位 (下一格)</button>
+        <button id="play-btn" class="btn-play">▶️ 播放戰術</button>
+        <button id="stop-btn" class="btn-stop">⏹️ 停止播放</button>
+        <button id="reset-btn" class="btn-reset">🔄 重置球員</button>
+        <button id="full-btn" class="btn-full">📺 全螢幕</button>
+    </div>
 </div>
 
 <script>
     const canvas = document.getElementById('courtCanvas');
     const ctx = canvas.getContext('2d');
+    const stepInfo = document.getElementById('step-info');
     
-    // 設定原始座標基準
+    // 原始設定參數
     const BASE_W = 900;
-    const BASE_H = 660; 
-    const COURT_W = 840; // 28公尺 * 30倍
-    const COURT_H = 450; // 15公尺 * 30倍
+    const BASE_H = 600;
     const PLAYER_R = 25;
+    const MAX_STEPS = 20;
 
-    // 球員頭像清單
     const imgNames = ["01.png", "05.png", "06.png", "07.png", "08.png", "09.png", "10.png", "12.png", "13.png", "15.png", "23.png", "89.png"];
     const imgUrls = imgNames.map(name => `https://raw.githubusercontent.com/goodskyfly-cell/newboard/main/${name}`);
 
     let items = [], images = [], dragTarget = null;
+    let keyframes = []; // 戰術點位存儲
+    let isPlaying = false;
+    let animeId = null;
 
     async function init() {
         images = await Promise.all(imgUrls.map(url => new Promise(res => {
@@ -92,67 +104,70 @@
 
     function resetItems() {
         items = [];
-        const startX = 60;
-        const spacing = (BASE_W - 120) / (images.length - 1);
-        // 將球員初始排列在畫布最下方的「預備區」
+        const startX = 50;
+        const spacing = (BASE_W - 100) / (images.length - 1);
+        // 球員整齊排列在下方邊線預備區
         images.forEach((img, i) => {
-            if(img) items.push({ x: startX + i * spacing, y: 580, img: img, type: 'player' });
+            if(img) items.push({ x: startX + i * spacing, y: 555, img: img, type: 'player' });
         });
-        items.push({ x: 450, y: 225, type: 'ball' });
+        items.push({ x: 450, y: 250, type: 'ball' });
         render();
     }
 
-    // 穩定版：專業球場線條繪製
-    function drawCourt(scale, ox, oy) {
+    // 【恢復原始狀態】專業球場線條
+    function drawCourtLines(scale, ox, oy) {
         ctx.strokeStyle = "white";
         ctx.lineWidth = 3 * scale;
-        const cw = COURT_W * scale, ch = COURT_H * scale;
-        const leftX = ox + (BASE_W * scale - cw) / 2;
-        const topY = oy + 30 * scale;
+        
+        const cw = 28 * 30 * scale; // 840
+        const ch = 15 * 30 * scale; // 450
+        const left = ox + (canvas.width - cw) / 2;
+        const top = oy + (canvas.height - ch) / 2;
 
-        // 1. 外框
-        ctx.strokeRect(leftX, topY, cw, ch);
-        // 2. 中線與中圈
+        // 邊框與中線
+        ctx.strokeRect(left, top, cw, ch);
         ctx.beginPath();
-        ctx.moveTo(leftX + cw/2, topY); ctx.lineTo(leftX + cw/2, topY + ch);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.arc(leftX + cw/2, topY + ch/2, 1.8 * 30 * scale, 0, Math.PI * 2);
+        ctx.moveTo(left + cw/2, top); ctx.lineTo(left + cw/2, top + ch);
         ctx.stroke();
 
-        // 3. 兩側細節 (三分線、禁區)
+        // 中圈
+        ctx.beginPath();
+        ctx.arc(left + cw/2, top + ch/2, 1.8 * 30 * scale, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // 兩側禁區與三分線
         [0, 1].forEach(side => {
-            const sideX = side === 0 ? leftX : leftX + cw;
+            const sideX = side === 0 ? left : left + cw;
             const dir = side === 0 ? 1 : -1;
-            const centerY = topY + ch/2;
-            
-            // 三分線 (精確直線與弧線連接)
+            const centerY = top + ch/2;
+
+            // 三分線 (原始精確比例)
             const r3 = 6.75 * 30 * scale;
-            const intersectY = 0.9 * 30 * scale;
+            const straightL = 1.575 * 30 * scale;
             ctx.beginPath();
-            ctx.moveTo(sideX, centerY - (ch/2 - intersectY));
-            ctx.lineTo(sideX + dir * 1.575 * 30 * scale, centerY - (ch/2 - intersectY));
-            ctx.arc(sideX + dir * 1.575 * 30 * scale, centerY, r3, side === 0 ? -1.2 : 1.95, side === 0 ? 1.2 : 4.33, side !== 0);
-            ctx.lineTo(sideX, centerY + (ch/2 - intersectY));
+            ctx.moveTo(sideX, centerY - (ch/2 - 0.9 * 30 * scale));
+            ctx.lineTo(sideX + dir * straightL, centerY - (ch/2 - 0.9 * 30 * scale));
+            ctx.arc(sideX + dir * straightL, centerY, r3, side === 0 ? -1.2 : 1.95, side === 0 ? 1.2 : 4.33, side !== 0);
+            ctx.lineTo(sideX, centerY + (ch/2 - 0.9 * 30 * scale));
             ctx.stroke();
 
             // 禁區
-            const keyW = 5.8 * 30 * scale, keyH = 4.9 * 30 * scale;
-            ctx.strokeRect(side === 0 ? sideX : sideX - keyW, centerY - keyH/2, keyW, keyH);
+            const kw = 5.8 * 30 * scale, kh = 4.9 * 30 * scale;
+            ctx.strokeRect(side === 0 ? sideX : sideX - kw, centerY - kh/2, kw, kh);
         });
     }
 
     function render() {
         const w = canvas.width, h = canvas.height;
         ctx.clearRect(0, 0, w, h);
-        const scale = Math.min(w / BASE_W, h / BASE_H);
-        const ox = (w - BASE_W * scale) / 2;
-        const oy = (h - BASE_H * scale) / 2;
 
-        drawCourt(scale, ox, oy);
+        const scale = Math.min(w / BASE_W, h / BASE_H);
+        const ox = 0, oy = 0; // 置中邏輯內含在 drawCourtLines
+
+        drawCourtLines(scale, ox, oy);
 
         items.forEach(p => {
-            const dx = p.x * scale + ox, dy = p.y * scale + oy, r = PLAYER_R * scale;
+            const dx = p.x * scale, dy = p.y * scale, r = PLAYER_R * scale;
             ctx.save();
             if(p.type === 'ball') {
                 ctx.beginPath(); ctx.arc(dx, dy, r * 0.6, 0, Math.PI * 2);
@@ -169,21 +184,19 @@
         });
     }
 
-    // 精確座標轉換
+    // 觸控座標精確轉換
     function getPos(e) {
         const rect = canvas.getBoundingClientRect();
-        const cx = e.touches ? e.touches[0].clientX : e.clientX;
-        const cy = e.touches ? e.touches[0].clientY : e.clientY;
-        const scale = Math.min(canvas.width / BASE_W, canvas.height / BASE_H);
-        const ox = (canvas.width - BASE_W * scale) / 2;
-        const oy = (canvas.height - BASE_H * scale) / 2;
-        return {
-            x: ((cx - rect.left) * (canvas.width / rect.width) - ox) / scale,
-            y: ((cy - rect.top) * (canvas.height / rect.height) - oy) / scale
-        };
+        const cx = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+        const cy = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        return { x: cx * scaleX / (canvas.width/BASE_W), y: cy * scaleY / (canvas.height/BASE_H) };
     }
 
-    const start = e => {
+    // 拖曳邏輯
+    const startDrag = e => {
+        if(isPlaying) return;
         const p = getPos(e);
         for(let i = items.length - 1; i >= 0; i--) {
             if(Math.hypot(items[i].x - p.x, items[i].y - p.y) < PLAYER_R + 10) {
@@ -193,8 +206,7 @@
             }
         }
     };
-
-    const move = e => {
+    const doDrag = e => {
         if(dragTarget) {
             const p = getPos(e);
             dragTarget.x = p.x; dragTarget.y = p.y;
@@ -202,23 +214,73 @@
             if(e.touches) e.preventDefault();
         }
     };
+    const endDrag = () => dragTarget = null;
 
-    canvas.addEventListener('mousedown', start);
-    window.addEventListener('mousemove', move);
-    window.addEventListener('mouseup', () => dragTarget = null);
-    canvas.addEventListener('touchstart', start, {passive: false});
-    window.addEventListener('touchmove', move, {passive: false});
-    window.addEventListener('touchend', () => dragTarget = null);
+    canvas.addEventListener('mousedown', startDrag);
+    window.addEventListener('mousemove', doDrag);
+    window.addEventListener('mouseup', endDrag);
+    canvas.addEventListener('touchstart', startDrag, {passive: false});
+    window.addEventListener('touchmove', doDrag, {passive: false});
+    window.addEventListener('touchend', endDrag);
+
+    // 【戰術功能】儲存點位
+    document.getElementById('save-btn').onclick = () => {
+        if (keyframes.length < MAX_STEPS) {
+            keyframes.push(JSON.parse(JSON.stringify(items)));
+            stepInfo.innerText = `已儲存點位：${keyframes.length} / ${MAX_STEPS}`;
+            alert(`第 ${keyframes.length} 格儲存成功`);
+        } else {
+            alert("已達上限 20 格");
+        }
+    };
+
+    // 【戰術功能】播放動畫
+    document.getElementById('play-btn').onclick = () => {
+        if (keyframes.length < 2) return alert("請至少儲存 2 個點位再播放");
+        isPlaying = true;
+        let step = 0, frame = 0, totalFrames = 30;
+
+        function animate() {
+            if (!isPlaying) return;
+            const start = keyframes[step];
+            const end = keyframes[step + 1];
+
+            items = start.map((item, i) => ({
+                ...item,
+                x: item.x + (end[i].x - item.x) * (frame / totalFrames),
+                y: item.y + (end[i].y - item.y) * (frame / totalFrames)
+            }));
+
+            render();
+            frame++;
+            if (frame > totalFrames) {
+                frame = 0; step++;
+                if (step >= keyframes.length - 1) { isPlaying = false; return; }
+            }
+            animeId = requestAnimationFrame(animate);
+        }
+        animate();
+    };
+
+    document.getElementById('stop-btn').onclick = () => {
+        isPlaying = false;
+        cancelAnimationFrame(animeId);
+        alert("動畫已停止");
+    };
+
+    document.getElementById('reset-btn').onclick = () => {
+        keyframes = [];
+        stepInfo.innerText = `已儲存點位：0 / 20`;
+        resetItems();
+    };
 
     document.getElementById('full-btn').onclick = () => {
         if (!document.fullscreenElement) canvas.requestFullscreen();
         else document.exitFullscreen();
     };
 
-    document.getElementById('reset-btn').onclick = resetItems;
-
-    // 自適應調整
-    function autoResize() {
+    // 自動縮放畫布
+    function resize() {
         if(document.fullscreenElement) {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
@@ -228,9 +290,8 @@
         }
         render();
     }
-
-    window.addEventListener('resize', autoResize);
-    document.addEventListener('fullscreenchange', autoResize);
+    window.addEventListener('resize', resize);
+    document.addEventListener('fullscreenchange', resize);
 
     init();
 </script>
