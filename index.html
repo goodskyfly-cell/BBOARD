@@ -3,48 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>籃球戰術平台 Pro - FIBA 縮放修復版</title>
+    <title>籃球戰術平台 Pro - 線條修復版</title>
     <style>
-        body { margin: 0; padding: 0; background-color: #1a202c; font-family: 'Microsoft JhengHei', sans-serif; color: white; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-        .header { text-align: center; background: #2d3748; padding: 10px; font-weight: bold; z-index: 10; }
+        body { margin: 0; padding: 0; background-color: #1a202c; font-family: sans-serif; color: white; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        .header { text-align: center; background: #2d3748; padding: 10px; font-weight: bold; }
         #step-info { color: #f6e05e; }
-        
-        /* 修改重點：自適應 Canvas 樣式 */
-        .canvas-container { 
-            flex: 1; 
-            position: relative; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            background: #1a202c; 
-            overflow: hidden; 
-        }
-        canvas { 
-            background-color: #f39c12; 
-            border: 3px solid #5d3a1a; 
-            border-radius: 5px; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            /* 當非全螢幕時，限制畫布最大高度，預留按鈕空間 */
-            max-height: 70vh; 
-            max-width: 98%; 
-            object-fit: contain; 
-            touch-action: none; 
-        }
-        
-        /* 當進入全螢幕模式時，畫布滿版 */
-        canvas:fullscreen {
-            max-width: 100vw;
-            max-height: 100vh;
-            border: none;
-            border-radius: 0;
-        }
-
-        .controls-overlay { 
-            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); 
-            display: flex; gap: 10px; z-index: 1000; pointer-events: auto;
-        }
-
-        button { padding: 10px 18px; border-radius: 8px; border: none; color: white; font-weight: bold; font-size: 1rem; cursor: pointer; transition: 0.2s; }
+        .canvas-container { flex: 1; position: relative; display: flex; justify-content: center; align-items: center; background: #1a202c; }
+        canvas { background-color: #f39c12; border: 2px solid #5d3a1a; touch-action: none; cursor: crosshair; }
+        .controls-overlay { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; z-index: 1000; }
+        button { padding: 10px 18px; border-radius: 8px; border: none; color: white; font-weight: bold; font-size: 1rem; cursor: pointer; }
         .btn-blue { background: #3182ce; }
         .btn-green { background: #38a169; }
         .btn-red { background: #e53e3e; }
@@ -56,8 +23,7 @@
 <div class="header">🏀 籃球戰術平台 Pro | <span id="step-info">已儲存：0/20 點位</span></div>
 
 <div class="canvas-container" id="main-container">
-    <canvas id="courtCanvas" width="900" height="660"></canvas>
-    
+    <canvas id="courtCanvas"></canvas>
     <div class="controls-overlay">
         <button class="btn-orange" id="mark-btn">📌 紀錄</button>
         <button class="btn-green" id="play-btn">▶️ 播放</button>
@@ -70,16 +36,10 @@
     const canvas = document.getElementById('courtCanvas');
     const ctx = canvas.getContext('2d');
     const container = document.getElementById('main-container');
-    
-    // 初始化設定：原始設計比例 (900x660 系統)
-    const BASE_WIDTH = 900;
-    const BASE_HEIGHT = 660; // 原始球場(600) + 下方球員區(60)
-    const BASE_COURT_H = 600;
-    const BASE_PLAYER_R = 24; // 原始球員圓圈半徑
 
-    let items = [], dragTarget = null, keyframes = [], images = [];
+    const BASE_W = 900, BASE_H = 660, COURT_H = 600;
+    let items = [], keyframes = [], images = [], scaleRatio = 1;
 
-    // 圖片資源 (保持不變)
     const imgNames = ["01.png", "05.png", "06.png", "07.png", "08.png", "09.png", "10.png", "12.png", "13.png", "15.png", "23.png", "89.png"];
     const imgUrls = imgNames.map(name => `https://raw.githubusercontent.com/goodskyfly-cell/newboard/main/${name}`);
 
@@ -89,152 +49,121 @@
             img.onload = () => res(img); img.onerror = () => res(null);
         })));
         resetBoard();
-        render(); // 確保初次繪製
+        window.addEventListener('resize', render);
+        render();
     }
 
-    // 重置物品 (使用原始座標)
     function resetBoard() {
-        keyframes = []; items = [];
-        // 將球員初始排列在「原始系統」的下方邊線 (y: 625 處)
-        images.forEach((img, i) => { if(img) items.push({ x: 50 + i * 72, y: 625, img: img, type: 'player' }); });
+        items = [];
+        images.forEach((img, i) => { if(img) items.push({ x: 50 + i * 72, y: 630, img: img, type: 'player' }); });
         items.push({ x: 450, y: 300, type: 'ball' });
+        keyframes = [];
     }
 
-    // --- 修改重點 1：FIBA 規則恢復 (依據原始代碼比例) ---
-    function drawCourtLines(scale) {
-        ctx.strokeStyle = "white"; 
-        ctx.lineWidth = 3 * scale; // 線粗隨放大比例調整
+    // --- 關鍵修正：確保線條繪製函式被呼叫 ---
+    function drawCourt(s) {
+        ctx.save();
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = 3 * s;
 
-        // FIBA 刻度 1:30 (1米=30單位)
-        const scaleFIBA = scale * 30;
-        const courtW = 28 * scaleFIBA, courtH = 15 * scaleFIBA; // 28x15 米
+        // 1. 外框
+        ctx.strokeRect(20 * s, 20 * s, 860 * s, 560 * s);
 
-        // 居中補償
-        const ox = (canvas.width - courtW) / 2;
-        const oy = (BASE_COURT_H * scale - courtH) / 2;
-
-        // 邊框與底色
-        ctx.fillStyle = "#f39c12"; ctx.fillRect(ox, oy, courtW, courtH);
-        ctx.strokeRect(ox, oy, courtW, courtH);
-
-        // 中線與中圈 (跨越中線的完整圓形)
+        // 2. 中線與中圈
         ctx.beginPath();
-        ctx.moveTo(ox + courtW/2, oy); ctx.lineTo(ox + courtW/2, oy + courtH);
+        ctx.moveTo(450 * s, 20 * s); ctx.lineTo(450 * s, 580 * s);
         ctx.stroke();
         ctx.beginPath();
-        ctx.arc(ox + courtW/2, oy + courtH/2, 1.8 * scaleFIBA, 0, Math.PI * 2); 
+        ctx.arc(450 * s, 300 * s, 60 * s, 0, Math.PI * 2);
         ctx.stroke();
 
-        // 左右半場簡化繪製 (FIBA 關鍵比例)
+        // 3. 禁區與三分線 (標準比例)
         [true, false].forEach(isLeft => {
-            const side = isLeft ? 1 : -1, x = isLeft ? ox : ox + courtW, centerY = oy + courtH / 2;
-            const r3 = 6.75 * scaleFIBA; // 三分線半徑
+            const offset = isLeft ? 20 * s : 880 * s;
+            const dir = isLeft ? 1 : -1;
             
-            // 三分線 (原始比例，確保不黑屏)
+            // 禁區
+            ctx.strokeRect(isLeft ? 20 * s : 710 * s, 210 * s, 170 * s, 180 * s);
+            
+            // 三分線弧
             ctx.beginPath();
-            ctx.arc(x + dir * 1.575 * scaleFIBA, oy + ch/2, r3, (isLeft ? -1.2 : 1.9), (isLeft ? 1.2 : 4.4));
+            ctx.arc(isLeft ? 60 * s : 840 * s, 300 * s, 230 * s, (isLeft ? -1.2 : 1.9), (isLeft ? 1.2 : 4.4));
             ctx.stroke();
-            
-            // 禁區 (標準 5.8 x 4.9)
-            ctx.strokeRect(isLeft ? ox : ox + courtW - 5.8 * scaleFIBA, centerY - 2.45 * scaleFIBA, 5.8 * scaleFIBA, 4.9 * scaleFIBA);
         });
+        ctx.restore();
     }
 
-    // --- 修改重點 2：同步放大渲染 (同時放大球場與球員) ---
     function render() {
-        const w = container.clientWidth, h = container.clientHeight;
+        // 更新畫布大小以適應螢幕
+        const containerW = container.clientWidth;
+        const containerH = container.clientHeight;
+        scaleRatio = Math.min(containerW / BASE_W, containerH / BASE_H);
         
-        // 根據 Canvas 當前實際大小計算比例倍率 (RWD 滿版支援)
-        if (document.fullscreenElement) {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            // 滿版放大倍率
-            scaleRatio = canvas.width / BASE_WIDTH;
-        } else {
-            // 平板標準比例
-            canvas.width = BASE_WIDTH;
-            canvas.height = BASE_HEIGHT;
-            scaleRatio = 1;
-        }
+        canvas.width = BASE_W * scaleRatio;
+        canvas.height = BASE_H * scaleRatio;
 
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // 畫球場 (帶入當前縮放比例)
-        drawCourtLines(scaleRatio);
+        // 繪製順序：1. 背景 (由 CSS 或 fillRect 控制)
+        ctx.fillStyle = "#f39c12";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // 核心修正：依照比例一起放大球員圖示
-        const currentR = BASE_PLAYER_R * scaleRatio;
+        // 2. 繪製球場線條 (確保傳入當前倍率)
+        drawCourt(scaleRatio);
 
+        // 3. 繪製球員與球
+        const radius = 24 * scaleRatio;
         items.forEach(p => {
-            // 將原始設計座標轉移為 Canvas 當前的渲染座標
-            const drawX = p.x * scaleRatio;
-            const drawY = p.y * scaleRatio;
-            
+            const dx = p.x * scaleRatio;
+            const dy = p.y * scaleRatio;
             ctx.save();
             if(p.type === 'ball') {
-                ctx.translate(drawX, drawY);
-                let grad = ctx.createRadialGradient(-currentR * 0.3 * 0.6, -currentR * 0.3 * 0.6, currentR * 0.1 * 0.6, 0, 0, currentR * 0.6);
-                grad.addColorStop(0, '#f97316'); grad.addColorStop(1, '#7c2d12');
-                ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(0, 0, currentR * 0.6, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(dx, dy, radius * 0.6, 0, Math.PI * 2);
+                ctx.fillStyle = "#ff4500"; ctx.fill(); ctx.strokeStyle = "black"; ctx.stroke();
             } else {
-                // 畫球員 (同時放大圓形)
-                ctx.beginPath(); ctx.arc(drawX, drawY, currentR, 0, Math.PI * 2);
-                ctx.fillStyle = "white"; ctx.fill(); ctx.clip(); 
-                if(p.img) ctx.drawImage(p.img, drawX - currentR, drawY - currentR, currentR * 2, currentR * 2);
+                ctx.beginPath(); ctx.arc(dx, dy, radius, 0, Math.PI * 2);
+                ctx.fillStyle = "white"; ctx.fill(); ctx.clip();
+                if(p.img) ctx.drawImage(p.img, dx - radius, dy - radius, radius * 2, radius * 2);
                 ctx.restore();
-                ctx.beginPath(); ctx.arc(drawX, drawY, currentR, 0, Math.PI * 2); ctx.strokeStyle="#333"; ctx.lineWidth=1; ctx.stroke();
+                ctx.beginPath(); ctx.arc(dx, dy, radius, 0, Math.PI * 2);
+                ctx.strokeStyle = "#333"; ctx.lineWidth = 2 * scaleRatio; ctx.stroke();
             }
             ctx.restore();
         });
     }
 
-    // 修改：全螢幕功能 (同步縮放邏輯恢復)
-    document.getElementById('full-btn').onclick = () => {
-        if (!document.fullscreenElement) {
-            container.requestFullscreen();
-        } else {
-            document.exitFullscreen();
-        }
-    };
-
-    // 座標自適應修正 (同步設計系統轉移)
+    // 觸控與拖曳 (簡化相容版)
     function getPos(e) {
         const rect = canvas.getBoundingClientRect();
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        
-        // 將點擊的實體座標轉換為 Canvas 當前的渲染座標
-        const canvasX = clientX - rect.left;
-        const canvasY = clientY - rect.top;
-        
-        // 再傳回原始系統的拖曳座標中系統 (設計系統轉移核心)
-        const scale = 900 / rect.width;
-        
-        return { x: canvasX * scale, y: canvasY * scale };
+        const ev = e.touches ? e.touches[0] : e;
+        return { x: (ev.clientX - rect.left) / scaleRatio, y: (ev.clientY - rect.top) / scaleRatio };
     }
 
-    // 其餘邏輯保持原本設定 (拖曳、復位、側邊欄、劇本播放邏輯)
-    canvas.addEventListener('mousedown', e => {
+    canvas.addEventListener('mousedown', startDrag);
+    canvas.addEventListener('touchstart', startDrag, {passive: false});
+    function startDrag(e) {
         const p = getPos(e);
-        // 使用原始半徑 BASE_PLAYER_R 做碰撞檢測，因為 p 座標已被轉回原始系統
-        for(let i = items.length - 1; i >= 0; i--) { if(Math.hypot(items[i].x - p.x, items[i].y - p.y) < BASE_PLAYER_R + 5) { dragTarget = items[i]; break; } }
-    });
-    window.addEventListener('mousemove', e => { if(dragTarget) { const p = getPos(e); dragTarget.x = p.x; dragTarget.y = p.y; render(); } });
+        dragTarget = items.findLast(i => Math.hypot(i.x - p.x, i.y - p.y) < 30);
+        if(e.type === 'touchstart') e.preventDefault();
+    }
+
+    window.addEventListener('mousemove', doDrag);
+    window.addEventListener('touchmove', doDrag, {passive: false});
+    function doDrag(e) {
+        if(!dragTarget) return;
+        const p = getPos(e);
+        dragTarget.x = p.x; dragTarget.y = p.y;
+        render();
+        if(e.type === 'touchmove') e.preventDefault();
+    }
+
     window.addEventListener('mouseup', () => dragTarget = null);
-    
-    canvas.addEventListener('touchstart', e => {
-        const p = getPos(e);
-        for(let i = items.length - 1; i >= 0; i--) { if(Math.hypot(items[i].x - p.x, items[i].y - p.y) < BASE_PLAYER_R + 5) { dragTarget = items[i]; e.preventDefault(); break; } }
-    }, {passive: false});
-    window.addEventListener('touchmove', e => { if(dragTarget) { const p = getPos(e); dragTarget.x = p.x; dragTarget.y = p.y; render(); e.preventDefault(); } }, {passive: false});
     window.addEventListener('touchend', () => dragTarget = null);
 
-    // 監聽全螢幕變化重畫
-    document.addEventListener('fullscreenchange', render);
-    window.addEventListener('resize', render);
+    document.getElementById('full-btn').onclick = () => {
+        if (!document.fullscreenElement) container.requestFullscreen();
+        else document.exitFullscreen();
+    };
 
-    document.getElementById('reset-btn').onclick = () => { resetBoard(); render(); };
-    init(); // 啟動
+    init();
 </script>
 </body>
 </html>
