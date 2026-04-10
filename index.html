@@ -178,7 +178,7 @@
             const cx = (it.x + (end[i].x - it.x) * t) * s, cy = (it.y + (end[i].y - it.y) * t) * s;
             drawItem(cx, cy, it.type, i, s);
         });
-        t += 0.01; if (t >= 1) { t = 0; currentFrame++; }
+        t += 0.008; if (t >= 1) { t = 0; currentFrame++; }
         if (currentFrame >= frames.length - 1) { stopAnim(); return; }
         requestAnimationFrame(animate);
     }
