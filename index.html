@@ -3,38 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>籃球戰術平台 Pro - 語音修復版</title>
+    <title>籃球戰術平台 Pro - 語音拖曳修復版</title>
     <style>
-        :root { --panel: rgba(25, 25, 25, 0.98); --border: rgba(255,255,255,0.15); --accent: #3182ce; }
+        :root { --panel: rgba(25, 25, 25, 0.98); --border: rgba(255,255,255,0.15); }
         body { margin: 0; padding: 0; background-color: #000; overflow: hidden; height: 100vh; display: flex; font-family: -apple-system, sans-serif; color: white; }
         
-        .stage { flex: 1; display: flex; justify-content: center; align-items: center; position: relative; overflow: hidden; background: #000; width: 100%; height: 100%; }
-        canvas { background-color: #111; touch-action: none; cursor: crosshair; z-index: 5; }
+        .stage { flex: 1; display: flex; justify-content: center; align-items: center; position: relative; overflow: hidden; background: #000; }
+        canvas { background-color: #111; touch-action: none; z-index: 5; }
 
-        /* 語音列 */
+        /* 語音列核心修正 */
         .voice-bar { 
             position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
-            z-index: 9999; background: var(--panel); backdrop-filter: blur(10px); 
-            padding: 10px 15px; border-radius: 12px; border: 1px solid var(--border); 
+            z-index: 10001; background: var(--panel); backdrop-filter: blur(10px); 
+            padding: 8px 12px; border-radius: 12px; border: 1px solid var(--border); 
             display: flex; gap: 10px; align-items: center; 
-            box-shadow: 0 8px 32px rgba(0,0,0,0.5); width: 85%; max-width: 500px;
-            touch-action: none;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5); width: 85%; max-width: 480px;
+            touch-action: none; /* 重要：防止瀏覽器滾動干擾拖曳 */
         }
-        .drag-handle { cursor: move; padding: 0 10px; color: #718096; font-size: 24px; user-select: none; }
+        .drag-handle { 
+            cursor: move; padding: 0 10px; color: #718096; font-size: 24px; 
+            user-select: none; touch-action: none;
+        }
         input#v-output { flex: 1; background: #1a202c; border: 1px solid #4a5568; color: #f6e05e; padding: 8px; border-radius: 6px; outline: none; font-size: 16px; font-weight: bold; }
 
-        /* 按鈕樣式 */
-        .panel-btn { width: 100%; padding: 14px 10px; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; margin-bottom: 12px; font-size: 15px; display: block; text-align: center; }
-        .btn-green { background: #38a169; } .btn-blue { background: #3182ce; } .btn-purple { background: #805ad5; } .btn-red { background: #e53e3e; } .btn-gray { background: #4a5568; }
-        .btn-purple.active { background: #f56565; box-shadow: 0 0 15px rgba(245, 101, 101, 0.5); }
-
-        .sidebar { position: absolute; top: 0; height: 100%; background: var(--panel); transition: transform 0.3s ease; z-index: 4000; display: flex; flex-direction: column; width: 260px; }
+        /* 側邊欄與按鈕 */
+        .sidebar { position: absolute; top: 0; height: 100%; background: var(--panel); transition: transform 0.3s ease; z-index: 4000; width: 260px; }
         .sidebar-left { left: 0; transform: translateX(-260px); border-right: 1px solid var(--border); }
         .sidebar-right { right: 0; transform: translateX(260px); border-left: 1px solid var(--border); }
         .sidebar.active { transform: translateX(0); }
-        .tab { position: absolute; width: 42px; height: 120px; display: flex; align-items: center; justify-content: center; writing-mode: vertical-lr; cursor: pointer; font-size: 14px; font-weight: bold; color: white; z-index: 4001; }
-        .left-tab { right: -43px; top: 20%; background: #3182ce; border-radius: 0 10px 10px 0; }
-        .right-tab { left: -43px; top: 20%; background: #38a169; border-radius: 10px 0 0 10px; }
+        .tab { position: absolute; width: 42px; height: 120px; display: flex; align-items: center; justify-content: center; writing-mode: vertical-lr; cursor: pointer; color: white; z-index: 4001; border-radius: 0 10px 10px 0; }
+        .left-tab { right: -42px; top: 20%; background: #3182ce; }
+        .right-tab { left: -42px; top: 20%; background: #38a169; border-radius: 10px 0 0 10px; }
+        
+        .panel-btn { width: 100%; padding: 14px; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; margin-bottom: 12px; }
+        .btn-green { background: #38a169; } .btn-blue { background: #3182ce; } .btn-purple { background: #805ad5; } .btn-red { background: #e53e3e; } .btn-gray { background: #4a5568; }
+
+        /* 播放控制 */
+        .play-controls { position: absolute; bottom: -120px; left: 50%; transform: translateX(-50%); z-index: 10000; transition: bottom 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28); background: var(--panel); padding: 15px 30px; border-radius: 50px; display: flex; gap: 20px; border: 1px solid var(--border); }
+        .play-controls.active { bottom: 40px; }
+        .control-btn { border: none; border-radius: 50%; width: 55px; height: 55px; cursor: pointer; font-size: 24px; color: white; display: flex; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
@@ -42,9 +49,15 @@
 <div class="stage" id="mainStage">
     <div class="voice-bar" id="dragVoice">
         <div class="drag-handle" id="v-handle">⠿</div>
-        <button class="panel-btn btn-purple" id="v-btn" style="width:auto; margin:0; padding:8px 15px;" onclick="toggleVoice()">🎤 說話</button>
-        <input type="text" id="v-output" placeholder="點擊說話..." readonly>
+        <button class="panel-btn btn-purple" style="width:auto; margin:0; padding:8px 15px;" onclick="toggleVoice()">🎤 說話</button>
+        <input type="text" id="v-output" placeholder="拖曳左側手把移動..." readonly>
         <button class="panel-btn btn-gray" style="width:auto; margin:0; padding:8px 10px;" onclick="document.getElementById('v-output').value=''">重設</button>
+    </div>
+
+    <div class="play-controls" id="playUI">
+        <button class="control-btn" style="background:#38a169;" onclick="resumeAnim()">▶</button>
+        <button class="control-btn" style="background:#ecc94b;" onclick="pauseAnim()">Ⅱ</button>
+        <button class="control-btn" style="background:#e53e3e;" onclick="stopAnim()">■</button>
     </div>
 
     <div class="sidebar sidebar-left" id="sidebarL">
@@ -70,79 +83,71 @@
 </div>
 
 <script>
-    // --- 核心語音轉文字修復 ---
-    let recognition = null;
-    let isListening = false;
-
-    function initVoice() {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) {
-            alert("您的瀏覽器不支援語音辨識功能，請使用 Chrome 瀏覽器。");
-            return false;
-        }
-        
-        recognition = new SpeechRecognition();
-        recognition.lang = 'zh-TW';
-        recognition.continuous = true;
-        recognition.interimResults = true;
-
-        recognition.onstart = () => {
-            isListening = true;
-            const btn = document.getElementById('v-btn');
-            btn.innerText = "🛑 停止";
-            btn.classList.add('active');
-        };
-
-        recognition.onresult = (event) => {
-            let transcript = "";
-            for (let i = event.resultIndex; i < event.results.length; i++) {
-                transcript += event.results[i][0].transcript;
-            }
-            document.getElementById('v-output').value = transcript;
-        };
-
-        recognition.onerror = (event) => {
-            console.error("語音辨識錯誤:", event.error);
-            if (event.error === 'not-allowed') alert("請允許麥克風權限以使用語音功能。");
-            stopListening();
-        };
-
-        recognition.onend = () => {
-            if (isListening) recognition.start(); // 保持監聽直到主動停止
-        };
-        return true;
-    }
-
-    function toggleVoice() {
-        if (!recognition) {
-            if (!initVoice()) return;
-        }
-
-        if (!isListening) {
-            try {
-                recognition.start();
-            } catch (e) {
-                console.warn("重啟辨識中...");
-            }
-        } else {
-            stopListening();
-        }
-    }
-
-    function stopListening() {
-        isListening = false;
-        if (recognition) recognition.stop();
-        const btn = document.getElementById('v-btn');
-        btn.innerText = "🎤 說話";
-        btn.classList.remove('active');
-    }
-
-    // --- 畫布與其餘功能 (保持先前正常版本) ---
     const canvas = document.getElementById('court');
     const ctx = canvas.getContext('2d');
     const BASE_W = 1000, BASE_H = 572;
     let items = [], frames = [], playerImages = [], courtImg = null;
     let isPlaying = false, isPaused = false, currentFrame = 0, t = 0;
+
+    // --- 語音列拖曳邏輯修復 ---
+    function initDraggableVoice() {
+        const bar = document.getElementById('dragVoice');
+        const handle = document.getElementById('v-handle');
+        let active = false;
+        let currentX, currentY, initialX, initialY;
+        let xOffset = 0, yOffset = 0;
+
+        const dragStart = (e) => {
+            const cx = e.touches ? e.touches[0].clientX : e.clientX;
+            const cy = e.touches ? e.touches[0].clientY : e.clientY;
+            initialX = cx - xOffset;
+            initialY = cy - yOffset;
+            
+            // 只有觸碰手把或背景（非按鈕與輸入框）才允許拖曳
+            if (e.target === handle || e.target === bar) {
+                active = true;
+            }
+        };
+
+        const dragMove = (e) => {
+            if (active) {
+                e.preventDefault();
+                const cx = e.touches ? e.touches[0].clientX : e.clientX;
+                const cy = e.touches ? e.touches[0].clientY : e.clientY;
+                currentX = cx - initialX;
+                currentY = cy - initialY;
+                xOffset = currentX;
+                yOffset = currentY;
+                // 使用 translate3d 提高渲染效能
+                bar.style.transform = `translate3d(calc(-50% + ${currentX}px), ${currentY}px, 0)`;
+            }
+        };
+
+        const dragEnd = () => { active = false; };
+
+        bar.addEventListener('mousedown', dragStart);
+        window.addEventListener('mousemove', dragMove);
+        window.addEventListener('mouseup', dragEnd);
+        bar.addEventListener('touchstart', dragStart, {passive: false});
+        window.addEventListener('touchmove', dragMove, {passive: false});
+        window.addEventListener('touchend', dragEnd);
+    }
+
+    // --- 播放與收納邏輯 ---
+    function startPlay() {
+        if (frames.length < 2) return alert("點位不足");
+        document.getElementById('sidebarL').classList.remove('active');
+        document.getElementById('sidebarR').classList.remove('active');
+        document.getElementById('playUI').classList.add('active');
+        currentFrame = 0; t = 0; isPlaying = true; isPaused = false;
+        requestAnimationFrame(animate);
+    }
+
+    function stopAnim() {
+        isPlaying = false;
+        document.getElementById('playUI').classList.remove('active');
+        render();
+    }
 
     function animate() {
         if (!isPlaying || isPaused) return;
@@ -158,13 +163,13 @@
         requestAnimationFrame(animate);
     }
 
+    // --- 基礎初始化與繪圖 ---
     function render() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         if(courtImg) ctx.drawImage(courtImg, 0, 0, canvas.width, canvas.height);
         const s = canvas.width / BASE_W;
         items.forEach((p, i) => drawItem(p.x * s, p.y * s, p.type, i, s));
     }
-
     function drawItem(x, y, type, idx, s) {
         const r = (type === 'ball' ? 18 : 34) * s;
         ctx.save(); ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
@@ -172,36 +177,17 @@
         else { ctx.fillStyle = "white"; ctx.fill(); ctx.clip(); if (playerImages[idx]) ctx.drawImage(playerImages[idx], x - r, y - r, r * 2, r * 2); }
         ctx.strokeStyle = "white"; ctx.lineWidth = 2 * s; ctx.stroke(); ctx.restore();
     }
-
+    function record() { frames.push(JSON.parse(JSON.stringify(items))); document.getElementById('fCount').innerText = frames.length; }
+    function pauseAnim() { isPaused = !isPaused; if(!isPaused) requestAnimationFrame(animate); }
+    function resumeAnim() { if(!isPlaying) startPlay(); else isPaused = false; requestAnimationFrame(animate); }
+    function toggleSidebar(dir) { document.getElementById(dir === 'L' ? 'sidebarL' : 'sidebarR').classList.toggle('active'); }
+    function toggleFull() { if (!document.fullscreenElement) document.getElementById('mainStage').requestFullscreen(); else document.exitFullscreen(); }
     function resize() {
         const stage = document.getElementById('mainStage');
         const ratio = BASE_W / BASE_H;
         let w = stage.clientWidth, h = stage.clientHeight;
         if (w / h > ratio) w = h * ratio; else h = w / ratio;
         canvas.width = w; canvas.height = h; render();
-    }
-
-    function initDraggableVoice() {
-        const bar = document.getElementById('dragVoice');
-        let active = false, currentX, currentY, initialX, initialY, xOffset = 0, yOffset = 0;
-        const dragStart = (e) => {
-            if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
-            const cx = e.touches ? e.touches[0].clientX : e.clientX;
-            const cy = e.touches ? e.touches[0].clientY : e.clientY;
-            initialX = cx - xOffset; initialY = cy - yOffset;
-            active = true;
-        };
-        const dragMove = (e) => { if (active) {
-            e.preventDefault();
-            const cx = e.touches ? e.touches[0].clientX : e.clientX;
-            const cy = e.touches ? e.touches[0].clientY : e.clientY;
-            currentX = cx - initialX; currentY = cy - initialY;
-            xOffset = currentX; yOffset = currentY;
-            bar.style.transform = `translate3d(calc(-50% + ${currentX}px), ${currentY}px, 0)`;
-        }};
-        bar.addEventListener('mousedown', dragStart); window.addEventListener('mousemove', dragMove);
-        window.addEventListener('mouseup', () => active = false);
-        bar.addEventListener('touchstart', dragStart, {passive:false}); window.addEventListener('touchmove', dragMove, {passive:false});
     }
 
     async function init() {
@@ -214,12 +200,8 @@
         window.addEventListener('resize', resize);
         resize();
     }
-    
     function resetItems() { items = playerImages.map((img, i) => ({ x: 80 + i * 75, y: 100, type: 'player' })); items.push({ x: 500, y: 286, type: 'ball' }); render(); }
-    function record() { frames.push(JSON.parse(JSON.stringify(items))); document.getElementById('fCount').innerText = frames.length; }
-    function startPlay() { if (frames.length < 2) return; currentFrame = 0; t = 0; isPlaying = true; requestAnimationFrame(animate); }
-    function toggleSidebar(dir) { document.getElementById(dir === 'L' ? 'sidebarL' : 'sidebarR').classList.toggle('active'); }
-    function toggleFull() { if (!document.fullscreenElement) document.getElementById('mainStage').requestFullscreen(); else document.exitFullscreen(); }
+    function clearFrames() { frames = []; document.getElementById('fCount').innerText = "0"; }
 
     function initDrag() {
         let target = null;
@@ -234,7 +216,6 @@
         window.addEventListener('mouseup', () => target = null);
         canvas.addEventListener('touchstart', (e) => { if(isPlaying) return; const p = getP(e.touches[0]); target = items.slice().reverse().find(i => Math.hypot(i.x - p.x, i.y - p.y) < 40); if(target) e.preventDefault(); }, {passive:false});
         window.addEventListener('touchmove', (e) => { if (target) { const p = getP(e.touches[0]); target.x = p.x; target.y = p.y; render(); e.preventDefault(); }}, {passive:false});
-        window.addEventListener('touchend', () => target = null);
     }
 
     init();
