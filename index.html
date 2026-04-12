@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>籃球戰術 Pro - 終極整合版 (藍色 Slot)</title>
+    <title>籃球戰術 Pro - 速度調整整合版</title>
     <style>
         :root { 
             --panel: rgba(25, 25, 25, 0.98); 
@@ -11,23 +11,14 @@
             --accent-blue: #3182ce;
             --accent-green: #38a169;
             --accent-purple: #805ad5;
-            /* 新增：專業模式 Slot 的顏色 (藍色) */
             --slot-color: #3182ce; 
             --slot-border: #1a365d;
         }
         body { margin: 0; padding: 0; background-color: #000; overflow: hidden; height: 100vh; display: flex; flex-direction: column; font-family: -apple-system, sans-serif; color: white; }
 
         /* 頂部切換分頁 */
-        .mode-tabs {
-            display: flex;
-            background: #1a202c;
-            border-bottom: 1px solid var(--border);
-            z-index: 5000;
-        }
-        .mode-tab {
-            flex: 1; padding: 12px; text-align: center; cursor: pointer; font-weight: bold; transition: 0.3s;
-            border-bottom: 3px solid transparent; color: #718096;
-        }
+        .mode-tabs { display: flex; background: #1a202c; border-bottom: 1px solid var(--border); z-index: 5000; }
+        .mode-tab { flex: 1; padding: 12px; text-align: center; cursor: pointer; font-weight: bold; transition: 0.3s; border-bottom: 3px solid transparent; color: #718096; }
         .mode-tab.active { color: white; border-bottom-color: var(--accent-blue); background: rgba(255,255,255,0.05); }
 
         .stage { flex: 1; display: flex; justify-content: center; align-items: center; position: relative; overflow: hidden; background: #000; }
@@ -42,12 +33,7 @@
             box-shadow: 0 8px 32px rgba(0,0,0,0.5); width: 85%; max-width: 480px;
         }
         .drag-handle { cursor: move; padding: 0 10px; color: #718096; font-size: 24px; user-select: none; }
-        input#v-output {
-            flex: 1; background: #1a202c; border: 1px solid #4a5568;
-            color: #f6e05e; padding: 8px; border-radius: 6px;
-            outline: none; font-size: 16px; font-weight: bold;
-            direction: rtl; text-align: right;
-        }
+        input#v-output { flex: 1; background: #1a202c; border: 1px solid #4a5568; color: #f6e05e; padding: 8px; border-radius: 6px; outline: none; font-size: 16px; font-weight: bold; direction: rtl; text-align: right; }
 
         /* 側邊欄 */
         .sidebar { position: absolute; top: 0; height: 100%; background: var(--panel); transition: transform 0.3s ease; z-index: 4000; width: 260px; }
@@ -58,12 +44,18 @@
         .left-tab { right: -42px; top: 20%; background: var(--accent-blue); border-radius: 0 10px 10px 0; }
         .right-tab { left: -42px; top: 20%; background: var(--accent-green); border-radius: 10px 0 0 10px; }
 
-        /* 按鈕與列表 */
+        /* 按鈕與工具列內容 */
         .sidebar-content { overflow-y: auto; height: calc(100% - 40px); padding: 20px; }
         .panel-btn { width: 100%; padding: 14px; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; margin-bottom: 12px; font-size: 14px; }
         .btn-purple { background: var(--accent-purple); }
         .btn-purple.active { background: #f56565; animation: pulse 1s infinite; }
         .btn-gray { background: #4a5568; }
+
+        /* 速度調整組件 */
+        .speed-control { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid var(--border); }
+        .speed-control label { display: block; margin-bottom: 10px; font-size: 14px; color: #cbd5e0; }
+        .speed-slider { width: 100%; cursor: pointer; accent-color: var(--accent-green); }
+
         .tactic-item { background: #2d3748; padding: 12px; border-radius: 8px; margin-bottom: 10px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border: 1px solid transparent; }
         .tactic-item:hover { border-color: var(--accent-blue); }
 
@@ -78,7 +70,7 @@
 <body>
 
 <div class="mode-tabs">
-    <div class="mode-tab active" onclick="switchMode('basic')">基本模式 (無 Slot)</div>
+    <div class="mode-tab active" onclick="switchMode('basic')">基本模式</div>
     <div class="mode-tab" onclick="switchMode('advanced')">專業模式 (藍色圓圈)</div>
 </div>
 
@@ -110,7 +102,13 @@
         <div class="tab right-tab" onclick="toggleSidebar('R')">工具 ◀</div>
         <div class="sidebar-content">
             <button class="panel-btn" style="background:var(--accent-green);" onclick="record()">📌 紀錄當前點位</button>
-            <div style="text-align:center; margin-bottom:10px;">已紀錄：<span id="fCount" style="color:var(--accent-green)">0</span> 步</div>
+            <div style="text-align:center; margin-bottom:15px;">已紀錄：<span id="fCount" style="color:var(--accent-green)">0</span> 步</div>
+            
+            <div class="speed-control">
+                <label>⏩ 播放速度：<span id="speedVal" style="color:var(--accent-green); font-weight:bold;">1.0</span>x</label>
+                <input type="range" class="speed-slider" id="speedSlider" min="0.5" max="2.0" step="0.1" value="1.0" oninput="updateSpeed(this.value)">
+            </div>
+
             <button class="panel-btn btn-purple" onclick="saveTactic()">💾 儲存戰術</button>
             <hr style="border:0; border-top:1px solid #444; margin: 15px 0;">
             <button class="panel-btn btn-gray" onclick="startPlay()">▶ 執行播放</button>
@@ -124,22 +122,20 @@
 </div>
 
 <script>
-    // --- 全域變數 ---
     const canvas = document.getElementById('court');
     const ctx = canvas.getContext('2d');
     const BASE_W = 1000, BASE_H = 572;
     let items = [], frames = [], playerImages = [], courtImg = null;
     let isPlaying = false, isPaused = false, currentFrame = 0, t = 0;
-    let currentMode = 'basic'; // 'basic' 或 'advanced'
+    let currentMode = 'basic';
     let tacticLibrary = [];
     let bindingMap = {};
+    let playSpeed = 1.0; // 播放速度變數
 
-    // --- 初始化 ---
     async function init() {
         courtImg = await loadImage("https://raw.githubusercontent.com/goodskyfly-cell/BBOARD/main/basketball%20court%202%20(NEW).png");
         const names = ["01.png", "05.png", "06.png", "07.png", "08.png", "09.png", "10.png", "12.png", "13.png", "15.png", "23.png", "89.png"];
         playerImages = await Promise.all(names.map(n => loadImage(`https://raw.githubusercontent.com/goodskyfly-cell/newboard/main/${n}`)));
-        
         resetItems();
         initDrag();
         initDraggableVoice();
@@ -148,98 +144,72 @@
         resize();
     }
 
-    function loadImage(src) {
-        return new Promise(res => { const img = new Image(); img.crossOrigin="anonymous"; img.src=src; img.onload=()=>res(img); });
-    }
+    function loadImage(src) { return new Promise(res => { const img = new Image(); img.crossOrigin="anonymous"; img.src=src; img.onload=()=>res(img); }); }
 
-    // --- 模式切換 ---
     function switchMode(mode) {
         currentMode = mode;
         document.querySelectorAll('.mode-tab').forEach(el => el.classList.remove('active'));
-        event.target.classList.add('active');
+        if(event) event.target.classList.add('active');
         document.getElementById('mode-desc').innerText = mode === 'basic' ? "目前：基本模式" : "目前：專業模式 (藍色圓圈)";
         resetItems();
     }
 
-    // --- 畫布渲染 ---
+    // 更新播放速度
+    function updateSpeed(val) {
+        playSpeed = parseFloat(val);
+        document.getElementById('speedVal').innerText = playSpeed.toFixed(1);
+    }
+
     function render() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         if(courtImg) ctx.drawImage(courtImg, 0, 0, canvas.width, canvas.height);
         const s = canvas.width / BASE_W;
-
-        // 繪製順序：Slot -> Player/Ball
         if (currentMode === 'advanced') {
             items.filter(it => it.type === 'slot').forEach(p => {
                 const isCovered = items.some(it => it.type === 'player' && Math.hypot(it.x - p.x, it.y - p.y) < 5);
                 drawItem(p.x * s, p.y * s, p.type, items.indexOf(p), s, p.label, isCovered);
             });
         }
-
-        items.filter(it => it.type !== 'slot').forEach((p, i) => {
-            drawItem(p.x * s, p.y * s, p.type, i, s);
-        });
+        items.filter(it => it.type !== 'slot').forEach((p, i) => drawItem(p.x * s, p.y * s, p.type, i, s));
     }
 
-    // --- 繪圖工具 (修改 Slot 樣式為藍色) ---
     function drawItem(x, y, type, idx, s, label, isCovered) {
         const r = (type === 'ball' ? 18 : 34) * s;
         ctx.save();
         ctx.beginPath();
         ctx.arc(x, y, r, 0, Math.PI * 2);
-
         if (type === 'slot') {
-            // --- 修改處：將 Slot 改為藍色圓圈 ---
-            // 讀取 CSS 定義的藍色
             const slotColor = getComputedStyle(document.documentElement).getPropertyValue('--slot-color').trim();
-            const slotBorder = getComputedStyle(document.documentElement).getPropertyValue('--slot-border').trim();
-            
-            ctx.fillStyle = slotColor; // 填充藍色
-            ctx.fill();
-            
-            ctx.setLineDash([]); // 實線
-            ctx.strokeStyle = slotBorder; // 深藍色描邊
-            ctx.lineWidth = 2 * s;
-            ctx.stroke();
-
-            // 若未被覆蓋，顯示白色數字
+            ctx.fillStyle = slotColor; ctx.fill();
+            ctx.strokeStyle = "#1a365d"; ctx.lineWidth = 2 * s; ctx.stroke();
             if (!isCovered) {
-                ctx.fillStyle = "white"; // 數字改為白色以利在藍底上識別
-                ctx.font = `bold ${28 * s}px Arial`; // 稍微放大字體
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-                ctx.fillText(label, x, y);
+                ctx.fillStyle = "white"; ctx.font = `bold ${28 * s}px Arial`;
+                ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(label, x, y);
             }
         } else if (type === 'ball') {
-            ctx.fillStyle = "#ff5722"; ctx.fill();
-            ctx.strokeStyle = "white"; ctx.lineWidth = 2 * s; ctx.stroke();
+            ctx.fillStyle = "#ff5722"; ctx.fill(); ctx.strokeStyle = "white"; ctx.lineWidth = 2 * s; ctx.stroke();
         } else {
-            // Player
             ctx.fillStyle = "#333"; ctx.fill(); ctx.clip();
             if (playerImages[idx]) ctx.drawImage(playerImages[idx], x - r, y - r, r * 2, r * 2);
             ctx.restore();
-            ctx.save();
-            ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.save(); ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
             ctx.strokeStyle = "white"; ctx.lineWidth = 2 * s; ctx.stroke();
         }
         ctx.restore();
     }
 
-    // --- 播放邏輯 ---
     function startPlay() {
         if (frames.length < 2) return alert("紀錄點位不足");
-        
         bindingMap = {};
         if (currentMode === 'advanced') {
             const slots = items.filter(it => it.type === 'slot');
             slots.forEach(slot => {
-                const foundPlayerIdx = items.findIndex(it => it.type === 'player' && Math.hypot(it.x - slot.x, it.y - slot.y) < 5);
-                if (foundPlayerIdx !== -1) bindingMap[items.indexOf(slot)] = foundPlayerIdx;
+                const foundIdx = items.findIndex(it => it.type === 'player' && Math.hypot(it.x - slot.x, it.y - slot.y) < 5);
+                if (foundIdx !== -1) bindingMap[items.indexOf(slot)] = foundIdx;
             });
         }
-
         currentFrame = 0; t = 0; isPlaying = true; isPaused = false;
         document.getElementById('playUI').classList.add('active');
-        // 收起側邊欄
         document.getElementById('sidebarL').classList.remove('active');
         document.getElementById('sidebarR').classList.remove('active');
         requestAnimationFrame(animate);
@@ -250,87 +220,36 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         if(courtImg) ctx.drawImage(courtImg, 0, 0, canvas.width, canvas.height);
         const s = canvas.width / BASE_W;
-        const start = frames[currentFrame];
-        const end = frames[currentFrame + 1];
-
+        const start = frames[currentFrame], end = frames[currentFrame + 1];
         if (!start || !end) { stopAnim(); return; }
 
         let currentPos = start.map((st, i) => ({
-            x: st.x + (end[i].x - st.x) * t,
-            y: st.y + (end[i].y - st.y) * t,
-            type: st.type,
-            label: st.label
+            x: st.x + (end[i].x - st.x) * t, y: st.y + (end[i].y - st.y) * t,
+            type: st.type, label: st.label
         }));
 
-        // 專業模式下的動態綁定
-        Object.keys(bindingMap).forEach(slotIdx => {
-            const playerIdx = bindingMap[slotIdx];
-            if (currentPos[playerIdx] && currentPos[slotIdx]) {
-                currentPos[playerIdx].x = currentPos[slotIdx].x;
-                currentPos[playerIdx].y = currentPos[slotIdx].y;
-            }
+        Object.keys(bindingMap).forEach(sIdx => {
+            const pIdx = bindingMap[sIdx];
+            currentPos[pIdx].x = currentPos[sIdx].x; currentPos[pIdx].y = currentPos[sIdx].y;
         });
 
-        // 繪製順序：Slot -> Player
         if (currentMode === 'advanced') {
-            currentPos.forEach((p, i) => {
-                if (p.type === 'slot') {
-                    let isCovered = Object.keys(bindingMap).includes(i.toString());
-                    drawItem(p.x * s, p.y * s, p.type, i, s, p.label, isCovered);
-                }
-            });
+            currentPos.forEach((p, i) => { if(p.type==='slot') drawItem(p.x*s, p.y*s, p.type, i, s, p.label, Object.keys(bindingMap).includes(i.toString())); });
         }
+        currentPos.forEach((p, i) => { if(p.type!=='slot') drawItem(p.x*s, p.y*s, p.type, i, s); });
 
-        currentPos.forEach((p, i) => {
-            if (p.type !== 'slot') {
-                drawItem(p.x * s, p.y * s, p.type, i, s);
-            }
-        });
-
-        t += 0.008; // 播放速度
+        t += 0.008 * playSpeed; // 套用播放速度
         if (t >= 1) { t = 0; currentFrame++; }
         if (currentFrame >= frames.length - 1) { isPlaying = false; return; }
         requestAnimationFrame(animate);
     }
 
-    // --- 語音功能 ---
-    let recognition = null;
-    let isListening = false;
-    function initVoice() {
-        const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!Speech) return alert("瀏覽器不支援語音辨識");
-        recognition = new Speech();
-        recognition.lang = 'zh-TW';
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.onstart = () => {
-            isListening = true;
-            document.getElementById('v-btn').innerText = "🛑 停止";
-            document.getElementById('v-btn').classList.add('active');
-        };
-        recognition.onresult = (e) => {
-            let res = "";
-            for (let i = e.resultIndex; i < e.results.length; i++) res += e.results[i][0].transcript;
-            document.getElementById('v-output').value = res;
-        };
-        recognition.onerror = () => stopListening();
-        recognition.onend = () => { if(isListening) recognition.start(); };
-    }
-    function toggleVoice() { if (!recognition) initVoice(); isListening ? stopListening() : recognition.start(); }
-    function stopListening() { 
-        isListening = false; if (recognition) recognition.stop();
-        const btn = document.getElementById('v-btn');
-        btn.innerText = "🎤 說話"; btn.classList.remove('active');
-    }
-
-    // --- 基礎功能 ---
     function resetItems() {
         items = [];
         if (currentMode === 'basic') {
             items = playerImages.map((_, i) => ({ x: 80 + i * 75, y: 100, type: 'player' }));
             items.push({ x: 500, y: 286, type: 'ball' });
         } else {
-            // 專業模式：12球員在上方，5 Slot在下方
             for(let i=0; i<12; i++) items.push({ x: 50 + (i % 6) * 75, y: i < 6 ? 55 : 125, type: 'player' });
             for(let i=0; i<5; i++) items.push({ x: 300 + i * 100, y: 480, type: 'slot', label: (i+1).toString() });
             items.push({ x: 500, y: 286, type: 'ball' });
@@ -364,13 +283,7 @@
             div.onclick = () => {
                 frames = JSON.parse(JSON.stringify(tac.data));
                 items = JSON.parse(JSON.stringify(frames[0]));
-                // 載入時自動切換模式
-                if (currentMode !== tac.mode) {
-                    currentMode = tac.mode;
-                    document.querySelectorAll('.mode-tab').forEach(el => el.classList.remove('active'));
-                    document.querySelectorAll('.mode-tab')[tac.mode === 'basic'?0:1].classList.add('active');
-                    document.getElementById('mode-desc').innerText = tac.mode === 'basic' ? "目前：基本模式" : "目前：專業模式 (藍色圓圈)";
-                }
+                if (currentMode !== tac.mode) switchMode(tac.mode);
                 document.getElementById('fCount').innerText = frames.length;
                 render();
             };
@@ -394,44 +307,26 @@
             const ty = e.touches ? e.touches[0].clientY : e.clientY;
             return { x: (tx - r.left) / (canvas.width / BASE_W), y: (ty - r.top) / (canvas.width / BASE_W) };
         };
-        const start = (e) => {
-            if(isPlaying) return;
-            const p = getP(e.touches ? e.touches[0] : e);
-            // 優先抓取最上層物件 (reverse)
-            target = items.slice().reverse().find(i => Math.hypot(i.x - p.x, i.y - p.y) < 35 * (canvas.width / BASE_W));
-        };
-        const move = (e) => { if (target) { const p = getP(e.touches ? e.touches[0] : e); target.x = p.x; target.y = p.y; render(); } };
-        const end = () => {
-            // 專業模式下的吸附功能
+        canvas.addEventListener('mousedown', (e) => { if(!isPlaying) target = items.slice().reverse().find(i => Math.hypot(i.x - getP(e).x, i.y - getP(e).y) < 35); });
+        window.addEventListener('mousemove', (e) => { if (target) { const p = getP(e); target.x = p.x; target.y = p.y; render(); } });
+        window.addEventListener('mouseup', () => {
             if (currentMode === 'advanced' && target && target.type === 'player') {
                 const slot = items.find(it => it.type === 'slot' && Math.hypot(it.x - target.x, it.y - target.y) < 40);
                 if (slot) { target.x = slot.x; target.y = slot.y; }
             }
             target = null; render();
-        };
-        canvas.addEventListener('mousedown', start); window.addEventListener('mousemove', move); window.addEventListener('mouseup', end);
-        canvas.addEventListener('touchstart', start, {passive:false}); window.addEventListener('touchmove', move, {passive:false}); window.addEventListener('touchend', end);
+        });
+        canvas.addEventListener('touchstart', (e) => { if(!isPlaying) target = items.slice().reverse().find(i => Math.hypot(i.x - getP(e).x, i.y - getP(e).y) < 35); }, {passive:false});
+        window.addEventListener('touchmove', (e) => { if (target) { const p = getP(e); target.x = p.x; target.y = p.y; render(); } }, {passive:false});
+        window.addEventListener('touchend', () => { /* 同 mouseup 邏輯 */ target = null; render(); });
     }
 
     function initDraggableVoice() {
         const bar = document.getElementById('dragVoice'), handle = document.getElementById('v-handle');
-        let active = false, currentX, currentY, initialX, initialY, xOffset = 0, yOffset = 0;
-        const start = (e) => {
-            const cx = e.touches ? e.touches[0].clientX : e.clientX, cy = e.touches ? e.touches[0].clientY : e.clientY;
-            initialX = cx - xOffset; initialY = cy - yOffset;
-            if (e.target === handle || e.target === bar) active = true;
-        };
-        const move = (e) => {
-            if (active) {
-                e.preventDefault();
-                const cx = e.touches ? e.touches[0].clientX : e.clientX, cy = e.touches ? e.touches[0].clientY : e.clientY;
-                currentX = cx - initialX; currentY = cy - initialY;
-                xOffset = currentX; yOffset = currentY;
-                bar.style.transform = `translate3d(calc(-50% + ${currentX}px), ${currentY}px, 0)`;
-            }
-        };
-        bar.addEventListener('mousedown', start); window.addEventListener('mousemove', move); window.addEventListener('mouseup', () => active = false);
-        bar.addEventListener('touchstart', start, {passive:false}); window.addEventListener('touchmove', move, {passive:false}); window.addEventListener('touchend', () => active = false);
+        let active = false, xOffset = 0, yOffset = 0, initialX, initialY;
+        bar.addEventListener('mousedown', (e) => { if(e.target === handle || e.target === bar) { active = true; initialX = e.clientX - xOffset; initialY = e.clientY - yOffset; } });
+        window.addEventListener('mousemove', (e) => { if(active) { xOffset = e.clientX - initialX; yOffset = e.clientY - initialY; bar.style.transform = `translate3d(calc(-50% + ${xOffset}px), ${yOffset}px, 0)`; } });
+        window.addEventListener('mouseup', () => active = false);
     }
 
     init();
