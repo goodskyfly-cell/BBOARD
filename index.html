@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>籃球戰術 Pro - 速度優化與滑動介面版</title>
+    <title>籃球戰術 Pro - 儲存功能修正版</title>
     <style>
         :root { 
             --panel: rgba(25, 25, 25, 0.98); 
@@ -12,10 +12,10 @@
             --accent-green: #38a169;
             --accent-purple: #805ad5;
             --slot-color: #3182ce; 
-            --slot-border: #1a365d;
         }
         body { margin: 0; padding: 0; background-color: #000; overflow: hidden; height: 100vh; display: flex; flex-direction: column; font-family: -apple-system, sans-serif; color: white; }
 
+        /* 頂部切換 */
         .mode-tabs { display: flex; background: #1a202c; border-bottom: 1px solid var(--border); z-index: 5000; }
         .mode-tab { flex: 1; padding: 12px; text-align: center; cursor: pointer; font-weight: bold; transition: 0.3s; border-bottom: 3px solid transparent; color: #718096; }
         .mode-tab.active { color: white; border-bottom-color: var(--accent-blue); background: rgba(255,255,255,0.05); }
@@ -23,19 +23,12 @@
         .stage { flex: 1; display: flex; justify-content: center; align-items: center; position: relative; overflow: hidden; background: #000; }
         canvas { background-color: #111; touch-action: none; z-index: 5; }
 
-        /* 側邊欄優化：增加滾動功能以支援平板 */
+        /* 側邊欄滑動優化 */
         .sidebar { position: absolute; top: 0; height: 100%; background: var(--panel); transition: transform 0.3s ease; z-index: 4000; width: 280px; display: flex; flex-direction: column; }
         .sidebar-left { left: 0; transform: translateX(-280px); border-right: 1px solid var(--border); }
         .sidebar-right { right: 0; transform: translateX(280px); border-left: 1px solid var(--border); }
         .sidebar.active { transform: translateX(0); }
-        
-        /* 關鍵：確保內容過長時可以上下滑動 */
-        .sidebar-content { 
-            flex: 1;
-            overflow-y: auto; 
-            padding: 20px;
-            -webkit-overflow-scrolling: touch; /* 增加 iOS 滑動流暢度 */
-        }
+        .sidebar-content { flex: 1; overflow-y: auto; padding: 20px; -webkit-overflow-scrolling: touch; }
 
         .tab { position: absolute; width: 42px; height: 120px; display: flex; align-items: center; justify-content: center; writing-mode: vertical-lr; cursor: pointer; color: white; z-index: 4001; }
         .left-tab { right: -42px; top: 20%; background: var(--accent-blue); border-radius: 0 10px 10px 0; }
@@ -45,19 +38,21 @@
         .btn-purple { background: var(--accent-purple); }
         .btn-gray { background: #4a5568; }
 
-        /* 播放控制介面 */
+        /* 戰術清單樣式 */
+        .tactic-item { background: #2d3748; padding: 12px; border-radius: 8px; margin-bottom: 10px; cursor: pointer; display: flex; justify-content: space-between; border: 1px solid transparent; }
+        .tactic-item:hover { border-color: var(--accent-blue); }
+
+        /* 播放控制 */
         .play-controls { position: absolute; bottom: -120px; left: 50%; transform: translateX(-50%); z-index: 10000; transition: bottom 0.4s; background: var(--panel); padding: 15px 30px; border-radius: 50px; display: flex; gap: 20px; border: 1px solid var(--border); }
         .play-controls.active { bottom: 40px; }
         .control-btn { border: none; border-radius: 50%; width: 55px; height: 55px; cursor: pointer; font-size: 24px; color: white; display: flex; align-items: center; justify-content: center; }
-
-        .speed-control { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid var(--border); }
     </style>
 </head>
 <body>
 
 <div class="mode-tabs">
-    <div class="mode-tab active" onclick="switchMode('basic')">基本模式</div>
-    <div class="mode-tab" onclick="switchMode('advanced')">專業模式 (藍色圓圈)</div>
+    <div class="mode-tab active" id="tab-basic" onclick="switchMode('basic')">基本模式</div>
+    <div class="mode-tab" id="tab-advanced" onclick="switchMode('advanced')">專業模式</div>
 </div>
 
 <div class="stage" id="mainStage">
@@ -70,7 +65,7 @@
     <div class="sidebar sidebar-left" id="sidebarL">
         <div class="tab left-tab" onclick="toggleSidebar('L')">戰術庫 ◀</div>
         <div class="sidebar-content">
-            <h3>戰術收藏</h3>
+            <h3 style="margin-top:0">💾 我的戰術</h3>
             <div id="tacticList"></div>
         </div>
     </div>
@@ -79,22 +74,21 @@
         <div class="tab right-tab" onclick="toggleSidebar('R')">工具 ◀</div>
         <div class="sidebar-content">
             <button class="panel-btn" style="background:var(--accent-green);" onclick="record()">📌 紀錄當前點位</button>
-            <div style="text-align:center; margin-bottom:15px;">已紀錄：<span id="fCount" style="color:var(--accent-green)">0</span> 步</div>
+            <div style="text-align:center; margin-bottom:15px;">已紀錄：<span id="fCount" style="color:var(--accent-green); font-weight:bold;">0</span> 步</div>
             
-            <div class="speed-control">
-                <label>⏩ 播放速度：<span id="speedVal" style="color:var(--accent-green); font-weight:bold;">1.0</span>x</label>
-                <input type="range" style="width:100%" id="speedSlider" min="0.1" max="2.0" step="0.1" value="1.0" oninput="updateSpeed(this.value)">
-                <p style="font-size: 10px; color: #718096; margin-top: 5px;">(基礎步進 t = 0.1)</p>
+            <div style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                <label style="font-size:12px; color:#cbd5e0;">⏩ 播放速度：<span id="speedVal">1.0</span>x</label>
+                <input type="range" style="width:100%" min="0.1" max="2.0" step="0.1" value="1.0" oninput="playSpeed = parseFloat(this.value); document.getElementById('speedVal').innerText=this.value;">
             </div>
 
-            <button class="panel-btn btn-purple" onclick="saveTactic()">💾 儲存戰術</button>
+            <button class="panel-btn btn-purple" onclick="saveTactic()">💾 儲存此戰術</button>
             <hr style="border:0; border-top:1px solid #444; margin: 15px 0;">
             <button class="panel-btn btn-gray" onclick="startPlay()">▶ 執行播放</button>
             <button class="panel-btn btn-gray" onclick="resetItems()">🔄 重置位置</button>
             <button class="panel-btn btn-gray" style="background:#e53e3e;" onclick="clearFrames()">🗑️ 清空紀錄</button>
-            
-            <button class="panel-btn btn-gray" onclick="toggleFull()" style="background:#3182ce; margin-top:10px;">📺 全螢幕模式</button>
-            <div style="height: 50px;"></div> </div>
+            <button class="panel-btn btn-gray" onclick="toggleFull()" style="background:#3182ce;">📺 全螢幕模式</button>
+            <div style="height: 60px;"></div>
+        </div>
     </div>
 
     <canvas id="court"></canvas>
@@ -109,7 +103,6 @@
     let currentMode = 'basic', playSpeed = 1.0;
     let tacticLibrary = [], bindingMap = {};
 
-    // 初始化與圖片載入...
     async function init() {
         courtImg = await loadImage("https://raw.githubusercontent.com/goodskyfly-cell/BBOARD/main/basketball%20court%202%20(NEW).png");
         const names = ["01.png", "05.png", "06.png", "07.png", "08.png", "09.png", "10.png", "12.png", "13.png", "15.png", "23.png", "89.png"];
@@ -117,45 +110,83 @@
         resetItems();
         initDrag();
         window.addEventListener('resize', resize);
-        document.addEventListener('fullscreenchange', resize);
         resize();
     }
 
     function loadImage(src) { return new Promise(res => { const img = new Image(); img.crossOrigin="anonymous"; img.src=src; img.onload=()=>res(img); }); }
 
-    function updateSpeed(val) {
-        playSpeed = parseFloat(val);
-        document.getElementById('speedVal').innerText = playSpeed.toFixed(1);
+    // --- 儲存與載入邏輯修正 ---
+    function saveTactic() {
+        if (frames.length < 2) return alert("請先記錄至少兩個點位！");
+        const name = prompt("請輸入戰術名稱：", "新戰術 " + (tacticLibrary.length + 1));
+        if (!name) return;
+
+        // 封裝完整資料，包含當前的模式與幀數
+        const newTactic = {
+            id: Date.now(),
+            name: name,
+            mode: currentMode,
+            data: JSON.parse(JSON.stringify(frames))
+        };
+        tacticLibrary.push(newTactic);
+        updateTacticListUI();
+        alert("戰術已儲存至左側戰術庫！");
     }
 
-    // 核心播放動畫
+    function updateTacticListUI() {
+        const list = document.getElementById('tacticList');
+        list.innerHTML = "";
+        tacticLibrary.forEach(tac => {
+            const div = document.createElement('div');
+            div.className = "tactic-item";
+            div.innerHTML = `<span>🏀 ${tac.name}</span><small style="color:#aaa">${tac.mode === 'basic'?'基本':'專業'}</small>`;
+            div.onclick = () => {
+                // 載入邏輯修正：強制切換模式並重置 Canvas
+                currentMode = tac.mode;
+                frames = JSON.parse(JSON.stringify(tac.data));
+                items = JSON.parse(JSON.stringify(frames[0]));
+                
+                // 更新 UI 狀態
+                document.querySelectorAll('.mode-tab').forEach(el => el.classList.remove('active'));
+                document.getElementById(tac.mode === 'basic' ? 'tab-basic' : 'tab-advanced').classList.add('active');
+                document.getElementById('fCount').innerText = frames.length;
+                
+                stopAnim(); // 確保停止先前的動畫
+                render();
+                alert(`已載入戰術：${tac.name}`);
+            };
+            list.appendChild(div);
+        });
+    }
+
+    // --- 播放邏輯 (步進 t = 0.1) ---
     function animate() {
         if (!isPlaying || isPaused) return;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        if(courtImg) ctx.drawImage(courtImg, 0, 0, canvas.width, canvas.height);
-        
         const s = canvas.width / BASE_W;
         const start = frames[currentFrame], end = frames[currentFrame + 1];
         if (!start || !end) { stopAnim(); return; }
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if(courtImg) ctx.drawImage(courtImg, 0, 0, canvas.width, canvas.height);
 
         let currentPos = start.map((st, i) => ({
             x: st.x + (end[i].x - st.x) * t, y: st.y + (end[i].y - st.y) * t,
             type: st.type, label: st.label
         }));
 
-        // 處理專業模式綁定
         if (currentMode === 'advanced') {
             Object.keys(bindingMap).forEach(sIdx => {
                 const pIdx = bindingMap[sIdx];
-                currentPos[pIdx].x = currentPos[sIdx].x; currentPos[pIdx].y = currentPos[sIdx].y;
+                if(currentPos[pIdx] && currentPos[sIdx]) {
+                    currentPos[pIdx].x = currentPos[sIdx].x; 
+                    currentPos[pIdx].y = currentPos[sIdx].y;
+                }
             });
             currentPos.forEach((p, i) => { if(p.type==='slot') drawItem(p.x*s, p.y*s, p.type, i, s, p.label, Object.keys(bindingMap).includes(i.toString())); });
         }
         currentPos.forEach((p, i) => { if(p.type!=='slot') drawItem(p.x*s, p.y*s, p.type, i, s); });
 
-        // 修改重點：t 的增量改為 0.1 * 倍率
-        t += 0.1 * playSpeed; 
-        
+        t += 0.1 * playSpeed; // 步進值修正為 0.1
         if (t >= 1) { t = 0; currentFrame++; }
         if (currentFrame >= frames.length - 1) { isPlaying = false; return; }
         requestAnimationFrame(animate);
@@ -173,12 +204,12 @@
         }
         currentFrame = 0; t = 0; isPlaying = true; isPaused = false;
         document.getElementById('playUI').classList.add('active');
-        toggleSidebar('L'); toggleSidebar('R'); // 關閉側邊欄以利觀察
         requestAnimationFrame(animate);
     }
 
-    // 基本介面功能
+    // --- 基礎繪圖與 UI ---
     function switchMode(mode) {
+        if (isPlaying) stopAnim();
         currentMode = mode;
         document.querySelectorAll('.mode-tab').forEach(el => el.classList.remove('active'));
         if(event) event.target.classList.add('active');
@@ -204,7 +235,7 @@
     function clearFrames() { frames = []; document.getElementById('fCount').innerText = "0"; }
     function stopAnim() { isPlaying = false; document.getElementById('playUI').classList.remove('active'); render(); }
     function pauseAnim() { isPaused = !isPaused; if(!isPaused) requestAnimationFrame(animate); }
-    function resumeAnim() { isPlaying ? isPaused = false : startPlay(); requestAnimationFrame(animate); }
+    function resumeAnim() { isPlaying ? isPaused = false : startPlay(); if(isPaused===false) requestAnimationFrame(animate); }
     function resetItems() {
         items = [];
         if (currentMode === 'basic') {
@@ -229,10 +260,7 @@
         }
         items.filter(it => it.type !== 'slot').forEach((p, i) => drawItem(p.x * s, p.y * s, p.type, i, s));
     }
-    function toggleSidebar(dir) { 
-        const el = document.getElementById(dir === 'L' ? 'sidebarL' : 'sidebarR');
-        el.classList.toggle('active'); 
-    }
+    function toggleSidebar(dir) { document.getElementById(dir === 'L' ? 'sidebarL' : 'sidebarR').classList.toggle('active'); }
     function toggleFull() { document.fullscreenElement ? document.exitFullscreen() : document.getElementById('mainStage').requestFullscreen(); }
     function resize() {
         const stage = document.getElementById('mainStage');
@@ -241,7 +269,6 @@
         if (w / h > ratio) w = h * ratio; else h = w / ratio;
         canvas.width = w; canvas.height = h; render();
     }
-
     function initDrag() {
         let target = null;
         const getP = (e) => {
