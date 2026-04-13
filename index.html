@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>籃球戰術 Pro - 儲存功能修正版</title>
+    <title>籃球戰術 Pro - 吸附功能修正版</title>
     <style>
         :root { 
             --panel: rgba(25, 25, 25, 0.98); 
@@ -15,7 +15,6 @@
         }
         body { margin: 0; padding: 0; background-color: #000; overflow: hidden; height: 100vh; display: flex; flex-direction: column; font-family: -apple-system, sans-serif; color: white; }
 
-        /* 頂部切換 */
         .mode-tabs { display: flex; background: #1a202c; border-bottom: 1px solid var(--border); z-index: 5000; }
         .mode-tab { flex: 1; padding: 12px; text-align: center; cursor: pointer; font-weight: bold; transition: 0.3s; border-bottom: 3px solid transparent; color: #718096; }
         .mode-tab.active { color: white; border-bottom-color: var(--accent-blue); background: rgba(255,255,255,0.05); }
@@ -23,7 +22,6 @@
         .stage { flex: 1; display: flex; justify-content: center; align-items: center; position: relative; overflow: hidden; background: #000; }
         canvas { background-color: #111; touch-action: none; z-index: 5; }
 
-        /* 側邊欄滑動優化 */
         .sidebar { position: absolute; top: 0; height: 100%; background: var(--panel); transition: transform 0.3s ease; z-index: 4000; width: 280px; display: flex; flex-direction: column; }
         .sidebar-left { left: 0; transform: translateX(-280px); border-right: 1px solid var(--border); }
         .sidebar-right { right: 0; transform: translateX(280px); border-left: 1px solid var(--border); }
@@ -38,11 +36,9 @@
         .btn-purple { background: var(--accent-purple); }
         .btn-gray { background: #4a5568; }
 
-        /* 戰術清單樣式 */
         .tactic-item { background: #2d3748; padding: 12px; border-radius: 8px; margin-bottom: 10px; cursor: pointer; display: flex; justify-content: space-between; border: 1px solid transparent; }
         .tactic-item:hover { border-color: var(--accent-blue); }
 
-        /* 播放控制 */
         .play-controls { position: absolute; bottom: -120px; left: 50%; transform: translateX(-50%); z-index: 10000; transition: bottom 0.4s; background: var(--panel); padding: 15px 30px; border-radius: 50px; display: flex; gap: 20px; border: 1px solid var(--border); }
         .play-controls.active { bottom: 40px; }
         .control-btn { border: none; border-radius: 50%; width: 55px; height: 55px; cursor: pointer; font-size: 24px; color: white; display: flex; align-items: center; justify-content: center; }
@@ -52,7 +48,7 @@
 
 <div class="mode-tabs">
     <div class="mode-tab active" id="tab-basic" onclick="switchMode('basic')">基本模式</div>
-    <div class="mode-tab" id="tab-advanced" onclick="switchMode('advanced')">專業模式</div>
+    <div class="mode-tab" id="tab-advanced" id="tab-advanced" onclick="switchMode('advanced')">專業模式</div>
 </div>
 
 <div class="stage" id="mainStage">
@@ -115,22 +111,74 @@
 
     function loadImage(src) { return new Promise(res => { const img = new Image(); img.crossOrigin="anonymous"; img.src=src; img.onload=()=>res(img); }); }
 
-    // --- 儲存與載入邏輯修正 ---
+    // --- 吸附判定修正邏輯 ---
+    function checkSnapping(target) {
+        if (currentMode === 'advanced' && target && target.type === 'player') {
+            // 找到距離最近的 Slot，範圍擴大至 60 單位
+            const slot = items.find(it => it.type === 'slot' && Math.hypot(it.x - target.x, it.y - target.y) < 60);
+            if (slot) {
+                target.x = slot.x;
+                target.y = slot.y;
+            }
+        }
+    }
+
+    function initDrag() {
+        let target = null;
+        let lastP = { x: 0, y: 0 }; // 快取最後位置
+
+        const getP = (e) => {
+            const r = canvas.getBoundingClientRect();
+            const tx = e.touches ? e.touches[0].clientX : e.clientX;
+            const ty = e.touches ? e.touches[0].clientY : e.clientY;
+            return { 
+                x: (tx - r.left) / (canvas.width / BASE_W), 
+                y: (ty - r.top) / (canvas.width / BASE_W) 
+            };
+        };
+
+        const handleStart = (e) => {
+            if(isPlaying) return;
+            const p = getP(e);
+            lastP = p;
+            target = items.slice().reverse().find(i => Math.hypot(i.x - p.x, i.y - p.y) < 45);
+        };
+
+        const handleMove = (e) => {
+            if (target) {
+                if (e.cancelable) e.preventDefault();
+                const p = getP(e);
+                lastP = p;
+                target.x = p.x;
+                target.y = p.y;
+                render();
+            }
+        };
+
+        const handleEnd = () => {
+            if (target) {
+                checkSnapping(target); // 執行吸附
+                target = null;
+                render();
+            }
+        };
+
+        canvas.addEventListener('mousedown', handleStart);
+        window.addEventListener('mousemove', handleMove);
+        window.addEventListener('mouseup', handleEnd);
+
+        canvas.addEventListener('touchstart', handleStart, { passive: false });
+        window.addEventListener('touchmove', handleMove, { passive: false });
+        window.addEventListener('touchend', handleEnd, { passive: false });
+    }
+
+    // --- 儲存與播放邏輯 (維持 0.1 步進) ---
     function saveTactic() {
         if (frames.length < 2) return alert("請先記錄至少兩個點位！");
         const name = prompt("請輸入戰術名稱：", "新戰術 " + (tacticLibrary.length + 1));
         if (!name) return;
-
-        // 封裝完整資料，包含當前的模式與幀數
-        const newTactic = {
-            id: Date.now(),
-            name: name,
-            mode: currentMode,
-            data: JSON.parse(JSON.stringify(frames))
-        };
-        tacticLibrary.push(newTactic);
+        tacticLibrary.push({ id: Date.now(), name, mode: currentMode, data: JSON.parse(JSON.stringify(frames)) });
         updateTacticListUI();
-        alert("戰術已儲存至左側戰術庫！");
     }
 
     function updateTacticListUI() {
@@ -139,27 +187,21 @@
         tacticLibrary.forEach(tac => {
             const div = document.createElement('div');
             div.className = "tactic-item";
-            div.innerHTML = `<span>🏀 ${tac.name}</span><small style="color:#aaa">${tac.mode === 'basic'?'基本':'專業'}</small>`;
+            div.innerHTML = `<span>🏀 ${tac.name}</span><small style="color:#aaa">${tac.mode==='basic'?'基本':'專業'}</small>`;
             div.onclick = () => {
-                // 載入邏輯修正：強制切換模式並重置 Canvas
                 currentMode = tac.mode;
                 frames = JSON.parse(JSON.stringify(tac.data));
                 items = JSON.parse(JSON.stringify(frames[0]));
-                
-                // 更新 UI 狀態
                 document.querySelectorAll('.mode-tab').forEach(el => el.classList.remove('active'));
                 document.getElementById(tac.mode === 'basic' ? 'tab-basic' : 'tab-advanced').classList.add('active');
                 document.getElementById('fCount').innerText = frames.length;
-                
-                stopAnim(); // 確保停止先前的動畫
+                stopAnim();
                 render();
-                alert(`已載入戰術：${tac.name}`);
             };
             list.appendChild(div);
         });
     }
 
-    // --- 播放邏輯 (步進 t = 0.1) ---
     function animate() {
         if (!isPlaying || isPaused) return;
         const s = canvas.width / BASE_W;
@@ -178,15 +220,14 @@
             Object.keys(bindingMap).forEach(sIdx => {
                 const pIdx = bindingMap[sIdx];
                 if(currentPos[pIdx] && currentPos[sIdx]) {
-                    currentPos[pIdx].x = currentPos[sIdx].x; 
-                    currentPos[pIdx].y = currentPos[sIdx].y;
+                    currentPos[pIdx].x = currentPos[sIdx].x; currentPos[pIdx].y = currentPos[sIdx].y;
                 }
             });
             currentPos.forEach((p, i) => { if(p.type==='slot') drawItem(p.x*s, p.y*s, p.type, i, s, p.label, Object.keys(bindingMap).includes(i.toString())); });
         }
         currentPos.forEach((p, i) => { if(p.type!=='slot') drawItem(p.x*s, p.y*s, p.type, i, s); });
 
-        t += 0.1 * playSpeed; // 步進值修正為 0.1
+        t += 0.1 * playSpeed;
         if (t >= 1) { t = 0; currentFrame++; }
         if (currentFrame >= frames.length - 1) { isPlaying = false; return; }
         requestAnimationFrame(animate);
@@ -196,8 +237,7 @@
         if (frames.length < 2) return alert("紀錄點位不足");
         bindingMap = {};
         if (currentMode === 'advanced') {
-            const slots = items.filter(it => it.type === 'slot');
-            slots.forEach(slot => {
+            items.filter(it => it.type === 'slot').forEach(slot => {
                 const fIdx = items.findIndex(it => it.type === 'player' && Math.hypot(it.x - slot.x, it.y - slot.y) < 5);
                 if (fIdx !== -1) bindingMap[items.indexOf(slot)] = fIdx;
             });
@@ -207,7 +247,7 @@
         requestAnimationFrame(animate);
     }
 
-    // --- 基礎繪圖與 UI ---
+    // --- 繪圖與共用函式 ---
     function switchMode(mode) {
         if (isPlaying) stopAnim();
         currentMode = mode;
@@ -268,27 +308,6 @@
         let w = stage.clientWidth, h = stage.clientHeight;
         if (w / h > ratio) w = h * ratio; else h = w / ratio;
         canvas.width = w; canvas.height = h; render();
-    }
-    function initDrag() {
-        let target = null;
-        const getP = (e) => {
-            const r = canvas.getBoundingClientRect();
-            const tx = e.touches ? e.touches[0].clientX : e.clientX;
-            const ty = e.touches ? e.touches[0].clientY : e.clientY;
-            return { x: (tx - r.left) / (canvas.width / BASE_W), y: (ty - r.top) / (canvas.width / BASE_W) };
-        };
-        canvas.addEventListener('mousedown', (e) => { if(!isPlaying) target = items.slice().reverse().find(i => Math.hypot(i.x - getP(e).x, i.y - getP(e).y) < 35); });
-        window.addEventListener('mousemove', (e) => { if (target) { const p = getP(e); target.x = p.x; target.y = p.y; render(); } });
-        window.addEventListener('mouseup', () => {
-            if (currentMode === 'advanced' && target && target.type === 'player') {
-                const slot = items.find(it => it.type === 'slot' && Math.hypot(it.x - target.x, it.y - target.y) < 40);
-                if (slot) { target.x = slot.x; target.y = slot.y; }
-            }
-            target = null; render();
-        });
-        canvas.addEventListener('touchstart', (e) => { if(!isPlaying) target = items.slice().reverse().find(i => Math.hypot(i.x - getP(e).x, i.y - getP(e).y) < 35); }, {passive:false});
-        window.addEventListener('touchmove', (e) => { if (target) { const p = getP(e); target.x = p.x; target.y = p.y; render(); } }, {passive:false});
-        window.addEventListener('touchend', () => { target = null; render(); });
     }
 
     init();
