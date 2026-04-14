@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>籃球戰術 Pro - 吸附功能修正版</title>
+    <title>籃球戰術板 Pro - 載入吸附修正版</title>
     <style>
         :root { 
             --panel: rgba(25, 25, 25, 0.98); 
@@ -11,304 +11,354 @@
             --accent-blue: #3182ce;
             --accent-green: #38a169;
             --accent-purple: #805ad5;
-            --slot-color: #3182ce; 
+            --accent-red: #e53e3e;
+            --accent-orange: #dd6b20;
         }
         body { margin: 0; padding: 0; background-color: #000; overflow: hidden; height: 100vh; display: flex; flex-direction: column; font-family: -apple-system, sans-serif; color: white; }
-
         .mode-tabs { display: flex; background: #1a202c; border-bottom: 1px solid var(--border); z-index: 5000; }
-        .mode-tab { flex: 1; padding: 12px; text-align: center; cursor: pointer; font-weight: bold; transition: 0.3s; border-bottom: 3px solid transparent; color: #718096; }
-        .mode-tab.active { color: white; border-bottom-color: var(--accent-blue); background: rgba(255,255,255,0.05); }
-
-        .stage { flex: 1; display: flex; justify-content: center; align-items: center; position: relative; overflow: hidden; background: #000; }
-        canvas { background-color: #111; touch-action: none; z-index: 5; }
-
-        .sidebar { position: absolute; top: 0; height: 100%; background: var(--panel); transition: transform 0.3s ease; z-index: 4000; width: 280px; display: flex; flex-direction: column; }
-        .sidebar-left { left: 0; transform: translateX(-280px); border-right: 1px solid var(--border); }
-        .sidebar-right { right: 0; transform: translateX(280px); border-left: 1px solid var(--border); }
+        .mode-tab { flex: 1; padding: 12px; text-align: center; cursor: pointer; font-weight: bold; color: #718096; }
+        .mode-tab.active { color: white; border-bottom: 3px solid var(--accent-blue); background: rgba(255,255,255,0.1); }
+        .stage { flex: 1; display: flex; justify-content: center; align-items: center; position: relative; overflow: hidden; background: #111; }
+        .canvas-container { position: relative; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; }
+        canvas { position: absolute; touch-action: none; }
+        #court { z-index: 5; }
+        #drawingCanvas { z-index: 10; pointer-events: none; }
+        #drawingCanvas.active { pointer-events: auto; cursor: crosshair; }
+        .sidebar { position: absolute; top: 0; height: 100%; background: var(--panel); transition: 0.3s ease; z-index: 4000; width: 260px; display: flex; flex-direction: column; }
+        .sidebar-left { left: -260px; border-right: 1px solid var(--border); }
+        .sidebar-right { right: -260px; border-left: 1px solid var(--border); }
         .sidebar.active { transform: translateX(0); }
-        .sidebar-content { flex: 1; overflow-y: auto; padding: 20px; -webkit-overflow-scrolling: touch; }
-
-        .tab { position: absolute; width: 42px; height: 120px; display: flex; align-items: center; justify-content: center; writing-mode: vertical-lr; cursor: pointer; color: white; z-index: 4001; }
-        .left-tab { right: -42px; top: 20%; background: var(--accent-blue); border-radius: 0 10px 10px 0; }
-        .right-tab { left: -42px; top: 20%; background: var(--accent-green); border-radius: 10px 0 0 10px; }
-
-        .panel-btn { width: 100%; padding: 14px; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; margin-bottom: 12px; font-size: 14px; }
-        .btn-purple { background: var(--accent-purple); }
+        .sidebar-left.active { left: 0; }
+        .sidebar-right.active { right: 0; }
+        .sidebar-content { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+        .tab { position: absolute; width: 42px; height: 100px; display: flex; align-items: center; justify-content: center; writing-mode: vertical-lr; cursor: pointer; color: white; font-weight: bold; top: 20%; }
+        .left-tab { right: -42px; background: var(--accent-blue); border-radius: 0 10px 10px 0; }
+        .right-tab { left: -42px; background: var(--accent-green); border-radius: 10px 0 0 10px; }
+        .panel-btn { width: 100%; padding: 8px 10px; border: none; border-radius: 6px; color: white; font-weight: bold; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .btn-green { background: var(--accent-green); }
+        .btn-blue { background: var(--accent-blue); }
         .btn-gray { background: #4a5568; }
-
-        .tactic-item { background: #2d3748; padding: 12px; border-radius: 8px; margin-bottom: 10px; cursor: pointer; display: flex; justify-content: space-between; border: 1px solid transparent; }
-        .tactic-item:hover { border-color: var(--accent-blue); }
-
-        .play-controls { position: absolute; bottom: -120px; left: 50%; transform: translateX(-50%); z-index: 10000; transition: bottom 0.4s; background: var(--panel); padding: 15px 30px; border-radius: 50px; display: flex; gap: 20px; border: 1px solid var(--border); }
-        .play-controls.active { bottom: 40px; }
-        .control-btn { border: none; border-radius: 50%; width: 55px; height: 55px; cursor: pointer; font-size: 24px; color: white; display: flex; align-items: center; justify-content: center; }
+        .btn-red { background: var(--accent-red); }
+        .btn-purple { background: var(--accent-purple); }
+        .btn-orange { background: var(--accent-orange); }
+        .tool-active { outline: 2px solid white; background: var(--accent-purple) !important; }
+        .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+        .play-controls-wrapper { position: absolute; bottom: -250px; left: 50%; transform: translateX(-50%); z-index: 10000; transition: bottom 0.4s; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+        .play-controls-wrapper.active { bottom: 30px; }
+        .speed-panel { background: var(--panel); padding: 5px 20px; border-radius: 20px; border: 1px solid var(--border); display: flex; align-items: center; gap: 10px; font-size: 12px; }
+        .speed-slider { cursor: pointer; accent-color: var(--accent-blue); width: 100px; }
+        .play-bar { background: var(--panel); padding: 12px 25px; border-radius: 40px; display: flex; align-items: center; gap: 15px; border: 1px solid var(--border); box-shadow: 0 10px 40px rgba(0,0,0,0.8); }
+        .ctrl-btn { border: none; border-radius: 50%; width: 42px; height: 42px; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+        .tactic-item { background: rgba(255,255,255,0.05); padding: 8px; border-radius: 6px; border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+        .tactic-name { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 120px; }
     </style>
 </head>
 <body>
 
 <div class="mode-tabs">
     <div class="mode-tab active" id="tab-basic" onclick="switchMode('basic')">基本模式</div>
-    <div class="mode-tab" id="tab-advanced" id="tab-advanced" onclick="switchMode('advanced')">專業模式</div>
+    <div class="mode-tab" id="tab-advanced" onclick="switchMode('advanced')">專業模式</div>
 </div>
 
-<div class="stage" id="mainStage">
-    <div class="play-controls" id="playUI">
-        <button class="control-btn" style="background:var(--accent-green);" onclick="resumeAnim()">▶</button>
-        <button class="control-btn" style="background:#ecc94b;" onclick="pauseAnim()">Ⅱ</button>
-        <button class="control-btn" style="background:#e53e3e;" onclick="stopAnim()">■</button>
+<div class="stage">
+    <div class="canvas-container" id="canvasHolder">
+        <canvas id="court"></canvas>
+        <canvas id="drawingCanvas"></canvas>
     </div>
-
+    <div class="play-controls-wrapper" id="playUI">
+        <div class="speed-panel">
+            <span>播放速度：</span>
+            <input type="range" class="speed-slider" id="speedCtrl" min="0.01" max="0.1" step="0.01" value="0.04" oninput="updateSpeedDisp()">
+            <span id="speedVal">1.0x</span>
+        </div>
+        <div class="play-bar">
+            <button class="ctrl-btn" style="background:var(--accent-green);" onclick="resumeAnim()">▶</button>
+            <button class="ctrl-btn" style="background:#ecc94b;" onclick="pauseAnim()">Ⅱ</button>
+            <button class="ctrl-btn" style="background:var(--accent-red);" onclick="stopAnim()">■</button>
+        </div>
+    </div>
     <div class="sidebar sidebar-left" id="sidebarL">
         <div class="tab left-tab" onclick="toggleSidebar('L')">戰術庫 ◀</div>
         <div class="sidebar-content">
-            <h3 style="margin-top:0">💾 我的戰術</h3>
+            <p style="text-align:center; color:#aaa; font-size:12px; margin: 5px 0;">已儲存戰術</p>
             <div id="tacticList"></div>
         </div>
     </div>
-
     <div class="sidebar sidebar-right" id="sidebarR">
-        <div class="tab right-tab" onclick="toggleSidebar('R')">工具 ◀</div>
+        <div class="tab right-tab" onclick="toggleSidebar('R')">工具面板 ◀</div>
         <div class="sidebar-content">
-            <button class="panel-btn" style="background:var(--accent-green);" onclick="record()">📌 紀錄當前點位</button>
-            <div style="text-align:center; margin-bottom:15px;">已紀錄：<span id="fCount" style="color:var(--accent-green); font-weight:bold;">0</span> 步</div>
-            
-            <div style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; margin-bottom: 12px;">
-                <label style="font-size:12px; color:#cbd5e0;">⏩ 播放速度：<span id="speedVal">1.0</span>x</label>
-                <input type="range" style="width:100%" min="0.1" max="2.0" step="0.1" value="1.0" oninput="playSpeed = parseFloat(this.value); document.getElementById('speedVal').innerText=this.value;">
+            <button class="panel-btn btn-purple" onclick="toggleFullScreen()">📺 全螢幕切換</button>
+            <hr style="border:0; border-top:1px solid var(--border); margin: 2px 0;">
+            <div id="mode-desc" style="font-size: 12px; color: #3182ce; padding: 4px; background: rgba(49,130,206,0.1); border-radius: 4px;"></div>
+            <button class="panel-btn btn-green" onclick="record()">📌 紀錄步驟 (紀錄後清空畫線)</button>
+            <div style="text-align:center; padding: 4px; background: rgba(255,255,255,0.05); border-radius: 4px; font-size:13px;">
+                暫存步數：<span id="fCount" style="font-weight:bold; color:var(--accent-green);">0</span>
             </div>
-
-            <button class="panel-btn btn-purple" onclick="saveTactic()">💾 儲存此戰術</button>
-            <hr style="border:0; border-top:1px solid #444; margin: 15px 0;">
-            <button class="panel-btn btn-gray" onclick="startPlay()">▶ 執行播放</button>
+            <button class="panel-btn btn-orange" onclick="saveToLibrary()">💾 儲存此戰術到左側</button>
+            <hr style="border:0; border-top:1px solid var(--border); margin: 2px 0;">
+            <div class="btn-row">
+                <button id="drawBtn" class="panel-btn btn-gray" onclick="toggleDrawMode()">🎨 黑色畫筆</button>
+                <button class="panel-btn btn-red" onclick="clearDrawing()">🧹 清除畫線</button>
+            </div>
+            <hr style="border:0; border-top:1px solid var(--border); margin: 2px 0;">
+            <button class="panel-btn btn-blue" onclick="startPlay()">🎬 播放戰術動畫</button>
             <button class="panel-btn btn-gray" onclick="resetItems()">🔄 重置位置</button>
-            <button class="panel-btn btn-gray" style="background:#e53e3e;" onclick="clearFrames()">🗑️ 清空紀錄</button>
-            <button class="panel-btn btn-gray" onclick="toggleFull()" style="background:#3182ce;">📺 全螢幕模式</button>
-            <div style="height: 60px;"></div>
+            <button class="panel-btn btn-red" onclick="clearFrames()">🗑️ 清空紀錄步數</button>
         </div>
     </div>
-
-    <canvas id="court"></canvas>
 </div>
 
 <script>
     const canvas = document.getElementById('court');
     const ctx = canvas.getContext('2d');
+    const dCanvas = document.getElementById('drawingCanvas');
+    const dCtx = dCanvas.getContext('2d');
     const BASE_W = 1000, BASE_H = 572;
-    let items = [], frames = [], playerImages = [], courtImg = null;
+    
+    let players = [], slots = [], ball = {x:500, y:286};
+    let frames = [], playerImages = [], courtImg = null;
     let isPlaying = false, isPaused = false, currentFrame = 0, t = 0;
-    let currentMode = 'basic', playSpeed = 1.0;
-    let tacticLibrary = [], bindingMap = {};
+    let isDrawingMode = false, isDrawing = false;
+    let currentMode = 'basic';
+    let savedTactics = [];
+    let playSpeed = 0.04;
 
     async function init() {
-        courtImg = await loadImage("https://raw.githubusercontent.com/goodskyfly-cell/BBOARD/main/basketball%20court%202%20(NEW).png");
-        const names = ["01.png", "05.png", "06.png", "07.png", "08.png", "09.png", "10.png", "12.png", "13.png", "15.png", "23.png", "89.png"];
-        playerImages = await Promise.all(names.map(n => loadImage(`https://raw.githubusercontent.com/goodskyfly-cell/newboard/main/${n}`)));
-        resetItems();
-        initDrag();
-        window.addEventListener('resize', resize);
-        resize();
+        try {
+            courtImg = await loadImage("https://raw.githubusercontent.com/goodskyfly-cell/BBOARD/main/basketball%20court%202%20(NEW).png");
+            const names = ["01.png", "05.png", "06.png", "07.png", "08.png", "09.png", "10.png", "12.png", "13.png", "15.png", "23.png", "89.png"];
+            playerImages = await Promise.all(names.map(n => loadImage(`https://raw.githubusercontent.com/goodskyfly-cell/newboard/main/${n}`)));
+            window.addEventListener('resize', resize);
+            resize();
+            switchMode('basic');
+            setupEvents();
+            updateTacticList();
+        } catch (e) { console.error(e); }
     }
 
-    function loadImage(src) { return new Promise(res => { const img = new Image(); img.crossOrigin="anonymous"; img.src=src; img.onload=()=>res(img); }); }
+    function loadImage(src) { 
+        return new Promise((res, rej) => { 
+            const img = new Image(); img.crossOrigin = "anonymous"; img.src = src; 
+            img.onload = () => res(img); img.onerror = () => rej(src);
+        }); 
+    }
 
-    // --- 吸附判定修正邏輯 ---
-    function checkSnapping(target) {
-        if (currentMode === 'advanced' && target && target.type === 'player') {
-            // 找到距離最近的 Slot，範圍擴大至 60 單位
-            const slot = items.find(it => it.type === 'slot' && Math.hypot(it.x - target.x, it.y - target.y) < 60);
-            if (slot) {
-                target.x = slot.x;
-                target.y = slot.y;
+    function resize() {
+        const holder = document.getElementById('canvasHolder');
+        const ratio = BASE_W / BASE_H;
+        let w = holder.clientWidth, h = holder.clientHeight;
+        if (w / h > ratio) w = h * ratio; else h = w / ratio;
+        canvas.width = dCanvas.width = w; canvas.height = dCanvas.height = h;
+        render();
+    }
+
+    function resetItems() {
+        players = []; slots = [];
+        for (let i = 0; i < 12; i++) {
+            players.push({ x: 80 + (i % 6) * 110, y: i < 6 ? 90 : 200, imgIndex: i, bindSlot: null });
+        }
+        if (currentMode === 'advanced') {
+            for (let i = 0; i < 5; i++) {
+                slots.push({ x: 250 + i * 160, y: 380, id: i });
             }
+        }
+        ball = {x: 500, y: 286};
+        clearDrawing();
+        render();
+    }
+
+    function render() {
+        if (!courtImg) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(courtImg, 0, 0, canvas.width, canvas.height);
+        const s = canvas.width / BASE_W;
+
+        if (currentMode === 'advanced') {
+            slots.forEach(sl => {
+                ctx.beginPath();
+                ctx.arc(sl.x * s, sl.y * s, 30 * s, 0, Math.PI * 2);
+                ctx.strokeStyle = "rgba(49, 130, 206, 0.8)"; 
+                ctx.setLineDash([5, 5]); ctx.lineWidth = 3; ctx.stroke();
+                ctx.setLineDash([]); ctx.fillStyle = "rgba(49, 130, 206, 0.15)"; ctx.fill();
+            });
+        }
+
+        players.forEach(p => {
+            const r = 25.5 * s;
+            ctx.save();
+            ctx.beginPath(); ctx.arc(p.x * s, p.y * s, r, 0, Math.PI * 2); ctx.fillStyle = "#333"; ctx.fill(); ctx.clip();
+            if (playerImages[p.imgIndex]) ctx.drawImage(playerImages[p.imgIndex], (p.x - 25.5) * s, (p.y - 25.5) * s, 51 * s, 51 * s);
+            ctx.restore(); 
+            ctx.beginPath(); ctx.arc(p.x * s, p.y * s, r, 0, Math.PI * 2);
+            ctx.strokeStyle = (p.bindSlot !== null && currentMode === 'advanced') ? "#38a169" : "white";
+            ctx.lineWidth = 2.5; ctx.stroke();
+        });
+
+        const br = 18 * s;
+        ctx.beginPath(); ctx.arc(ball.x * s, ball.y * s, br, 0, Math.PI * 2);
+        ctx.fillStyle = "#ff5722"; ctx.fill(); ctx.strokeStyle = "white"; ctx.lineWidth = 2; ctx.stroke();
+    }
+
+    function setupEvents() {
+        let target = null;
+        const getXY = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const cx = e.touches ? e.touches[0].clientX : e.clientX;
+            const cy = e.touches ? e.touches[0].clientY : e.clientY;
+            return { x: (cx - rect.left) * (BASE_W / canvas.width), y: (cy - rect.top) * (BASE_W / canvas.width) };
+        };
+        const start = (e) => {
+            if (isPlaying) return;
+            const pos = getXY(e);
+            if (isDrawingMode) { dCtx.beginPath(); dCtx.moveTo(pos.x * (canvas.width/BASE_W), pos.y * (canvas.width/BASE_W)); isDrawing = true; return; }
+            target = [ball, ...players, ...slots].reverse().find(it => Math.hypot(it.x - pos.x, it.y - pos.y) < 30);
+        };
+        const move = (e) => {
+            if (!target && !isDrawing) return;
+            if (e.cancelable) e.preventDefault();
+            const pos = getXY(e);
+            if (isDrawingMode) {
+                dCtx.lineTo(pos.x * (canvas.width/BASE_W), pos.y * (canvas.width/BASE_W));
+                dCtx.strokeStyle = "#000000"; dCtx.lineWidth = 4; dCtx.lineCap="round"; dCtx.stroke();
+            } else {
+                target.x = pos.x; target.y = pos.y;
+                if (currentMode === 'advanced' && players.includes(target)) {
+                    const near = slots.find(sl => Math.hypot(sl.x - pos.x, sl.y - pos.y) < 30);
+                    target.bindSlot = near ? near.id : null;
+                }
+                render();
+            }
+        };
+        const end = () => { 
+            // 結束拖曳時，如果是專業模式且有吸附，強制對準中心
+            if (target && players.includes(target) && target.bindSlot !== null) {
+                const sl = slots.find(s => s.id === target.bindSlot);
+                if (sl) { target.x = sl.x; target.y = sl.y; }
+            }
+            target = null; isDrawing = false; render(); 
+        };
+        const el = document.getElementById('canvasHolder');
+        el.addEventListener('mousedown', start); window.addEventListener('mousemove', move); window.addEventListener('mouseup', end);
+        el.addEventListener('touchstart', start, {passive:false}); window.addEventListener('touchmove', move, {passive:false}); window.addEventListener('touchend', end);
+    }
+
+    function record() {
+        const drawData = dCanvas.toDataURL();
+        frames.push({ 
+            players: JSON.parse(JSON.stringify(players)), 
+            slots: JSON.parse(JSON.stringify(slots)), 
+            ball: JSON.parse(JSON.stringify(ball)), 
+            drawing: drawData 
+        });
+        document.getElementById('fCount').innerText = frames.length;
+        clearDrawing();
+    }
+
+    function saveToLibrary() {
+        if (frames.length === 0) return alert("請先紀錄步驟！");
+        const name = prompt("請輸入戰術名稱：", "戰術 " + (savedTactics.length + 1));
+        if (name) {
+            savedTactics.push({ name: name, data: JSON.parse(JSON.stringify(frames)) });
+            updateTacticList();
         }
     }
 
-    function initDrag() {
-        let target = null;
-        let lastP = { x: 0, y: 0 }; // 快取最後位置
+    // --- 關鍵修正：載入戰術後重新掃描吸附關係 ---
+    function loadTactic(index) {
+        frames = JSON.parse(JSON.stringify(savedTactics[index].data));
+        document.getElementById('fCount').innerText = frames.length;
+        
+        const first = frames[0];
+        players = JSON.parse(JSON.stringify(first.players));
+        slots = JSON.parse(JSON.stringify(first.slots));
+        ball = JSON.parse(JSON.stringify(first.ball));
 
-        const getP = (e) => {
-            const r = canvas.getBoundingClientRect();
-            const tx = e.touches ? e.touches[0].clientX : e.clientX;
-            const ty = e.touches ? e.touches[0].clientY : e.clientY;
-            return { 
-                x: (tx - r.left) / (canvas.width / BASE_W), 
-                y: (ty - r.top) / (canvas.width / BASE_W) 
-            };
-        };
+        // 恢復吸附邏輯
+        if (currentMode === 'advanced') {
+            players.forEach(p => {
+                const near = slots.find(sl => Math.hypot(sl.x - p.x, sl.y - p.y) < 30);
+                p.bindSlot = near ? near.id : null;
+                if (near) { p.x = near.x; p.y = near.y; } // 對齊
+            });
+        }
 
-        const handleStart = (e) => {
-            if(isPlaying) return;
-            const p = getP(e);
-            lastP = p;
-            target = items.slice().reverse().find(i => Math.hypot(i.x - p.x, i.y - p.y) < 45);
-        };
-
-        const handleMove = (e) => {
-            if (target) {
-                if (e.cancelable) e.preventDefault();
-                const p = getP(e);
-                lastP = p;
-                target.x = p.x;
-                target.y = p.y;
-                render();
-            }
-        };
-
-        const handleEnd = () => {
-            if (target) {
-                checkSnapping(target); // 執行吸附
-                target = null;
-                render();
-            }
-        };
-
-        canvas.addEventListener('mousedown', handleStart);
-        window.addEventListener('mousemove', handleMove);
-        window.addEventListener('mouseup', handleEnd);
-
-        canvas.addEventListener('touchstart', handleStart, { passive: false });
-        window.addEventListener('touchmove', handleMove, { passive: false });
-        window.addEventListener('touchend', handleEnd, { passive: false });
+        if(first.drawing) drawSavedLine(first.drawing); else clearDrawing();
+        render();
+        alert(`已載入「${savedTactics[index].name}」`);
     }
 
-    // --- 儲存與播放邏輯 (維持 0.1 步進) ---
-    function saveTactic() {
-        if (frames.length < 2) return alert("請先記錄至少兩個點位！");
-        const name = prompt("請輸入戰術名稱：", "新戰術 " + (tacticLibrary.length + 1));
-        if (!name) return;
-        tacticLibrary.push({ id: Date.now(), name, mode: currentMode, data: JSON.parse(JSON.stringify(frames)) });
-        updateTacticListUI();
-    }
-
-    function updateTacticListUI() {
-        const list = document.getElementById('tacticList');
-        list.innerHTML = "";
-        tacticLibrary.forEach(tac => {
-            const div = document.createElement('div');
-            div.className = "tactic-item";
-            div.innerHTML = `<span>🏀 ${tac.name}</span><small style="color:#aaa">${tac.mode==='basic'?'基本':'專業'}</small>`;
-            div.onclick = () => {
-                currentMode = tac.mode;
-                frames = JSON.parse(JSON.stringify(tac.data));
-                items = JSON.parse(JSON.stringify(frames[0]));
-                document.querySelectorAll('.mode-tab').forEach(el => el.classList.remove('active'));
-                document.getElementById(tac.mode === 'basic' ? 'tab-basic' : 'tab-advanced').classList.add('active');
-                document.getElementById('fCount').innerText = frames.length;
-                stopAnim();
-                render();
-            };
-            list.appendChild(div);
-        });
+    function drawSavedLine(dataUrl) {
+        const img = new Image();
+        img.src = dataUrl;
+        img.onload = () => { clearDrawing(); dCtx.drawImage(img, 0, 0, dCanvas.width, dCanvas.height); };
     }
 
     function animate() {
         if (!isPlaying || isPaused) return;
-        const s = canvas.width / BASE_W;
-        const start = frames[currentFrame], end = frames[currentFrame + 1];
-        if (!start || !end) { stopAnim(); return; }
-
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        if(courtImg) ctx.drawImage(courtImg, 0, 0, canvas.width, canvas.height);
-
-        let currentPos = start.map((st, i) => ({
-            x: st.x + (end[i].x - st.x) * t, y: st.y + (end[i].y - st.y) * t,
-            type: st.type, label: st.label
-        }));
-
-        if (currentMode === 'advanced') {
-            Object.keys(bindingMap).forEach(sIdx => {
-                const pIdx = bindingMap[sIdx];
-                if(currentPos[pIdx] && currentPos[sIdx]) {
-                    currentPos[pIdx].x = currentPos[sIdx].x; currentPos[pIdx].y = currentPos[sIdx].y;
-                }
-            });
-            currentPos.forEach((p, i) => { if(p.type==='slot') drawItem(p.x*s, p.y*s, p.type, i, s, p.label, Object.keys(bindingMap).includes(i.toString())); });
-        }
-        currentPos.forEach((p, i) => { if(p.type!=='slot') drawItem(p.x*s, p.y*s, p.type, i, s); });
-
-        t += 0.1 * playSpeed;
-        if (t >= 1) { t = 0; currentFrame++; }
-        if (currentFrame >= frames.length - 1) { isPlaying = false; return; }
-        requestAnimationFrame(animate);
+        const cur = frames[currentFrame], nxt = frames[currentFrame+1];
+        if (t === 0 && cur.drawing) { drawSavedLine(cur.drawing); }
+        if (nxt) {
+            if (currentMode === 'basic') {
+                players.forEach((p, i) => {
+                    p.x = cur.players[i].x + (nxt.players[i].x - cur.players[i].x) * t;
+                    p.y = cur.players[i].y + (nxt.players[i].y - cur.players[i].y) * t;
+                });
+            } else {
+                slots.forEach((sl, i) => {
+                    sl.x = cur.slots[i].x + (nxt.slots[i].x - cur.slots[i].x) * t;
+                    sl.y = cur.slots[i].y + (nxt.slots[i].y - cur.slots[i].y) * t;
+                });
+                players.forEach(p => { if (p.bindSlot !== null) { const sl = slots.find(s => s.id === p.bindSlot); if(sl) { p.x = sl.x; p.y = sl.y; } } });
+            }
+            ball.x = cur.ball.x + (nxt.ball.x - cur.ball.x) * t;
+            ball.y = cur.ball.y + (nxt.ball.y - cur.ball.y) * t;
+            t += playSpeed; render();
+            if (t >= 1) { t = 0; currentFrame++; }
+            requestAnimationFrame(animate);
+        } else { isPlaying = false; }
     }
 
     function startPlay() {
-        if (frames.length < 2) return alert("紀錄點位不足");
-        bindingMap = {};
-        if (currentMode === 'advanced') {
-            items.filter(it => it.type === 'slot').forEach(slot => {
-                const fIdx = items.findIndex(it => it.type === 'player' && Math.hypot(it.x - slot.x, it.y - slot.y) < 5);
-                if (fIdx !== -1) bindingMap[items.indexOf(slot)] = fIdx;
-            });
-        }
-        currentFrame = 0; t = 0; isPlaying = true; isPaused = false;
+        if (frames.length < 1) return alert("暫存中沒有步數");
+        isPlaying = true; currentFrame = 0; t = 0;
         document.getElementById('playUI').classList.add('active');
         requestAnimationFrame(animate);
     }
 
-    // --- 繪圖與共用函式 ---
-    function switchMode(mode) {
-        if (isPlaying) stopAnim();
-        currentMode = mode;
-        document.querySelectorAll('.mode-tab').forEach(el => el.classList.remove('active'));
-        if(event) event.target.classList.add('active');
-        resetItems();
+    function updateTacticList() {
+        const list = document.getElementById('tacticList');
+        list.innerHTML = "";
+        savedTactics.forEach((t, i) => {
+            const item = document.createElement('div');
+            item.className = 'tactic-item';
+            item.innerHTML = `
+                <span class="tactic-name">${t.name}</span>
+                <div style="display:flex; gap:4px;">
+                    <button class="panel-btn btn-blue" style="padding:4px 8px; font-size:11px;" onclick="loadTactic(${i})">載入</button>
+                    <button class="panel-btn btn-red" style="padding:4px 8px; font-size:11px;" onclick="deleteTactic(${i})">刪除</button>
+                </div>
+            `;
+            list.appendChild(item);
+        });
     }
-    function drawItem(x, y, type, idx, s, label, isCovered) {
-        const r = (type === 'ball' ? 18 : 34) * s;
-        ctx.save(); ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
-        if (type === 'slot') {
-            ctx.fillStyle = "#3182ce"; ctx.fill(); ctx.strokeStyle = "#1a365d"; ctx.lineWidth = 2 * s; ctx.stroke();
-            if (!isCovered) { ctx.fillStyle = "white"; ctx.font = `bold ${28 * s}px Arial`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(label, x, y); }
-        } else if (type === 'ball') {
-            ctx.fillStyle = "#ff5722"; ctx.fill(); ctx.strokeStyle = "white"; ctx.lineWidth = 2 * s; ctx.stroke();
-        } else {
-            ctx.fillStyle = "#333"; ctx.fill(); ctx.clip();
-            if (playerImages[idx]) ctx.drawImage(playerImages[idx], x - r, y - r, r * 2, r * 2);
-            ctx.restore(); ctx.save(); ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
-            ctx.strokeStyle = "white"; ctx.lineWidth = 2 * s; ctx.stroke();
-        }
-        ctx.restore();
+
+    function deleteTactic(index) { if(confirm("確定刪除？")) { savedTactics.splice(index, 1); updateTacticList(); } }
+    function toggleSidebar(dir) {
+        const sb = document.getElementById('sidebar' + dir);
+        sb.classList.toggle('active');
+        const tab = sb.querySelector('.tab');
+        if (dir === 'L') tab.innerText = sb.classList.contains('active') ? "戰術庫 ▶" : "戰術庫 ◀";
+        else tab.innerText = sb.classList.contains('active') ? "工具面板 ▶" : "工具面板 ◀";
     }
-    function record() { frames.push(JSON.parse(JSON.stringify(items))); document.getElementById('fCount').innerText = frames.length; }
-    function clearFrames() { frames = []; document.getElementById('fCount').innerText = "0"; }
-    function stopAnim() { isPlaying = false; document.getElementById('playUI').classList.remove('active'); render(); }
+    function updateSpeedDisp() { playSpeed = parseFloat(document.getElementById('speedCtrl').value); document.getElementById('speedVal').innerText = (playSpeed / 0.04).toFixed(1) + "x"; }
+    function clearDrawing() { dCtx.clearRect(0,0,dCanvas.width,dCanvas.height); }
+    function switchMode(m) { currentMode = m; document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active')); document.getElementById('tab-' + m).classList.add('active'); document.getElementById('mode-desc').innerText = m === 'basic' ? "💡 模式：自由移動" : "💡 模式：對位藍圈"; clearFrames(); resetItems(); }
+    function toggleDrawMode() { isDrawingMode = !isDrawingMode; document.getElementById('drawBtn').classList.toggle('tool-active', isDrawingMode); document.getElementById('drawingCanvas').classList.toggle('active', isDrawingMode); }
+    function toggleFullScreen() { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); }
+    function stopAnim() { isPlaying = false; document.getElementById('playUI').classList.remove('active'); resetItems(); }
     function pauseAnim() { isPaused = !isPaused; if(!isPaused) requestAnimationFrame(animate); }
-    function resumeAnim() { isPlaying ? isPaused = false : startPlay(); if(isPaused===false) requestAnimationFrame(animate); }
-    function resetItems() {
-        items = [];
-        if (currentMode === 'basic') {
-            items = playerImages.map((_, i) => ({ x: 80 + i * 75, y: 100, type: 'player' }));
-            items.push({ x: 500, y: 286, type: 'ball' });
-        } else {
-            for(let i=0; i<12; i++) items.push({ x: 50 + (i % 6) * 75, y: i < 6 ? 55 : 125, type: 'player' });
-            for(let i=0; i<5; i++) items.push({ x: 300 + i * 100, y: 480, type: 'slot', label: (i+1).toString() });
-            items.push({ x: 500, y: 286, type: 'ball' });
-        }
-        render();
-    }
-    function render() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        if(courtImg) ctx.drawImage(courtImg, 0, 0, canvas.width, canvas.height);
-        const s = canvas.width / BASE_W;
-        if (currentMode === 'advanced') {
-            items.filter(it => it.type === 'slot').forEach(p => {
-                const isCovered = items.some(it => it.type === 'player' && Math.hypot(it.x - p.x, it.y - p.y) < 5);
-                drawItem(p.x * s, p.y * s, p.type, items.indexOf(p), s, p.label, isCovered);
-            });
-        }
-        items.filter(it => it.type !== 'slot').forEach((p, i) => drawItem(p.x * s, p.y * s, p.type, i, s));
-    }
-    function toggleSidebar(dir) { document.getElementById(dir === 'L' ? 'sidebarL' : 'sidebarR').classList.toggle('active'); }
-    function toggleFull() { document.fullscreenElement ? document.exitFullscreen() : document.getElementById('mainStage').requestFullscreen(); }
-    function resize() {
-        const stage = document.getElementById('mainStage');
-        const ratio = BASE_W / BASE_H;
-        let w = stage.clientWidth, h = stage.clientHeight;
-        if (w / h > ratio) w = h * ratio; else h = w / ratio;
-        canvas.width = w; canvas.height = h; render();
-    }
+    function resumeAnim() { isPaused = false; if(!isPlaying) startPlay(); else requestAnimationFrame(animate); }
+    function clearFrames() { frames = []; document.getElementById('fCount').innerText = "0"; clearDrawing(); stopAnim(); }
 
     init();
 </script>
